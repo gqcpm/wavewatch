@@ -1,6 +1,9 @@
 # Environment variables
 .env
 
+# Cache files
+surf_data_cache.json
+
 # macOS
 .DS_Store
 
