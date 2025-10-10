@@ -7,6 +7,7 @@ import os
 import json
 import time
 import requests
+from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 from dotenv import load_dotenv
 
@@ -196,8 +197,8 @@ class StormglassDataFetcher:
                     'seaLevel'        # Sea level (tide equivalent)
                 ]),
                 'source': 'noaa',  # Use NOAA as primary source
-                'start': int(time.time()),  # Current time
-                'end': int(time.time()) + 86400  # 24 hours from now
+                'start': int(datetime.now().replace(hour=0, minute=0, second=0).timestamp()),  # Start of current day
+                'end': int(datetime.now().replace(hour=23, minute=59, second=59).timestamp())  # End of current day
             }
             
             headers = {
@@ -266,21 +267,40 @@ class StormglassDataFetcher:
             
             hourly_conditions = []
             for hour_data in hours:
+                # Convert units from metric to imperial
+                wave_height_m = hour_data.get('waveHeight', {}).get('noaa', 'N/A')
+                wave_height_ft = round(float(wave_height_m) * 3.28084, 1) if wave_height_m != 'N/A' else 'N/A'
+                
+                wind_speed_ms = hour_data.get('windSpeed', {}).get('noaa', 'N/A')
+                wind_speed_mph = round(float(wind_speed_ms) * 2.23694, 1) if wind_speed_ms != 'N/A' else 'N/A'
+                
+                water_temp_c = hour_data.get('waterTemperature', {}).get('noaa', 'N/A')
+                water_temp_f = round(float(water_temp_c) * 9/5 + 32, 1) if water_temp_c != 'N/A' else 'N/A'
+                
+                air_temp_c = hour_data.get('airTemperature', {}).get('noaa', 'N/A')
+                air_temp_f = round(float(air_temp_c) * 9/5 + 32, 1) if air_temp_c != 'N/A' else 'N/A'
+                
+                visibility_km = hour_data.get('visibility', {}).get('noaa', 'N/A')
+                visibility_mi = round(float(visibility_km) * 0.621371, 1) if visibility_km != 'N/A' else 'N/A'
+                
+                sea_level_m = hour_data.get('seaLevel', {}).get('noaa', 'N/A')
+                tide_ft = round(float(sea_level_m) * 3.28084, 1) if sea_level_m != 'N/A' else 'N/A'
+                
                 hourly_conditions.append({
                     'time': hour_data.get('time', 'N/A'),
-                    'wave_height': hour_data.get('waveHeight', {}).get('noaa', 'N/A'),
+                    'wave_height': wave_height_ft,
                     'wave_direction': hour_data.get('waveDirection', {}).get('noaa', 'N/A'),
                     'wave_period': hour_data.get('wavePeriod', {}).get('noaa', 'N/A'),
-                    'wind_speed': hour_data.get('windSpeed', {}).get('noaa', 'N/A'),
+                    'wind_speed': wind_speed_mph,
                     'wind_direction': hour_data.get('windDirection', {}).get('noaa', 'N/A'),
-                    'water_temperature': hour_data.get('waterTemperature', {}).get('noaa', 'N/A'),
-                    'air_temperature': hour_data.get('airTemperature', {}).get('noaa', 'N/A'),
+                    'water_temperature': water_temp_f,
+                    'air_temperature': air_temp_f,
                     'pressure': hour_data.get('pressure', {}).get('noaa', 'N/A'),
                     'humidity': hour_data.get('humidity', {}).get('noaa', 'N/A'),
-                    'visibility': hour_data.get('visibility', {}).get('noaa', 'N/A'),
+                    'visibility': visibility_mi,
                     'cloud_cover': hour_data.get('cloudCover', {}).get('noaa', 'N/A'),
                     'precipitation': hour_data.get('precipitation', {}).get('noaa', 'N/A'),
-                    'tide': hour_data.get('seaLevel', {}).get('noaa', 'N/A')
+                    'tide': tide_ft
                 })
             
             return {
@@ -384,25 +404,44 @@ class StormglassDataFetcher:
             data = result['data']
             current_hour = data['hours'][0]  # Get current hour data
             
+            # Convert units from metric to imperial
+            wave_height_m = current_hour.get('waveHeight', {}).get('noaa', 'N/A')
+            wave_height_ft = round(float(wave_height_m) * 3.28084, 1) if wave_height_m != 'N/A' else 'N/A'
+            
+            wind_speed_ms = current_hour.get('windSpeed', {}).get('noaa', 'N/A')
+            wind_speed_mph = round(float(wind_speed_ms) * 2.23694, 1) if wind_speed_ms != 'N/A' else 'N/A'
+            
+            water_temp_c = current_hour.get('waterTemperature', {}).get('noaa', 'N/A')
+            water_temp_f = round(float(water_temp_c) * 9/5 + 32, 1) if water_temp_c != 'N/A' else 'N/A'
+            
+            air_temp_c = current_hour.get('airTemperature', {}).get('noaa', 'N/A')
+            air_temp_f = round(float(air_temp_c) * 9/5 + 32, 1) if air_temp_c != 'N/A' else 'N/A'
+            
+            visibility_km = current_hour.get('visibility', {}).get('noaa', 'N/A')
+            visibility_mi = round(float(visibility_km) * 0.621371, 1) if visibility_km != 'N/A' else 'N/A'
+            
+            sea_level_m = current_hour.get('seaLevel', {}).get('noaa', 'N/A')
+            tide_ft = round(float(sea_level_m) * 3.28084, 1) if sea_level_m != 'N/A' else 'N/A'
+            
             return {
                 'beach_name': result['beach_name'],
                 'coordinates': result['coordinates'],
                 'cached': result.get('cached', False),
                 'timestamp': result.get('timestamp'),
                 'current_conditions': {
-                    'wave_height': current_hour.get('waveHeight', {}).get('noaa', 'N/A'),
+                    'wave_height': wave_height_ft,
                     'wave_direction': current_hour.get('waveDirection', {}).get('noaa', 'N/A'),
                     'wave_period': current_hour.get('wavePeriod', {}).get('noaa', 'N/A'),
-                    'wind_speed': current_hour.get('windSpeed', {}).get('noaa', 'N/A'),
+                    'wind_speed': wind_speed_mph,
                     'wind_direction': current_hour.get('windDirection', {}).get('noaa', 'N/A'),
-                    'water_temperature': current_hour.get('waterTemperature', {}).get('noaa', 'N/A'),
-                    'air_temperature': current_hour.get('airTemperature', {}).get('noaa', 'N/A'),
+                    'water_temperature': water_temp_f,
+                    'air_temperature': air_temp_f,
                     'pressure': current_hour.get('pressure', {}).get('noaa', 'N/A'),
                     'humidity': current_hour.get('humidity', {}).get('noaa', 'N/A'),
-                    'visibility': current_hour.get('visibility', {}).get('noaa', 'N/A'),
+                    'visibility': visibility_mi,
                     'cloud_cover': current_hour.get('cloudCover', {}).get('noaa', 'N/A'),
                     'precipitation': current_hour.get('precipitation', {}).get('noaa', 'N/A'),
-                    'tide': current_hour.get('seaLevel', {}).get('noaa', 'N/A')
+                    'tide': tide_ft
                 }
             }
         except (KeyError, IndexError, TypeError) as e:

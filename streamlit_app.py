@@ -5,12 +5,107 @@ A simple Streamlit app to get surf conditions for any beach.
 
 import streamlit as st
 import os
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
 from dotenv import load_dotenv
 from src.wavewatch.llm.summarizer import SurfSummarizer
 from src.wavewatch.api.data_fetcher import StormglassDataFetcher
 
 # Load environment variables from .env file
 load_dotenv()
+
+def create_surf_charts(hourly_data):
+    """Create line charts for surf conditions throughout the day."""
+    if 'error' in hourly_data or not hourly_data.get('hourly_conditions'):
+        return None
+    
+    try:
+        # Convert hourly data to DataFrame
+        hours = hourly_data['hourly_conditions']
+        df_data = []
+        
+        # Get current date to filter out next day's data
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        
+        for hour in hours:
+            hour_time = hour.get('time', '')
+            # Only include data from current day
+            if hour_time.startswith(current_date):
+                df_data.append({
+                    'time': hour_time,
+                    'wave_height': float(hour.get('wave_height', 0)) if hour.get('wave_height') != 'N/A' else 0,
+                    'wave_period': float(hour.get('wave_period', 0)) if hour.get('wave_period') != 'N/A' else 0,
+                    'wind_speed': float(hour.get('wind_speed', 0)) if hour.get('wind_speed') != 'N/A' else 0,
+                    'tide': float(hour.get('tide', 0)) if hour.get('tide') != 'N/A' else 0,
+                    'air_temperature': float(hour.get('air_temperature', 0)) if hour.get('air_temperature') != 'N/A' else 0,
+                    'humidity': float(hour.get('humidity', 0)) if hour.get('humidity') != 'N/A' else 0,
+                    'water_temperature': float(hour.get('water_temperature', 0)) if hour.get('water_temperature') != 'N/A' else 0
+                })
+        
+        df = pd.DataFrame(df_data)
+        
+        # Parse time for better x-axis
+        df['time_parsed'] = pd.to_datetime(df['time']).dt.strftime('%H:%M')
+        
+        # Create charts
+        charts = {}
+        
+        # Wave Height Chart
+        fig_wave = px.line(df, x='time_parsed', y='wave_height', 
+                          title='🌊 Wave Height Throughout the Day',
+                          labels={'wave_height': 'Wave Height (ft)', 'time_parsed': 'Time'})
+        fig_wave.update_layout(height=300, showlegend=False)
+        charts['wave_height'] = fig_wave
+        
+        # Wave Period Chart
+        fig_period = px.line(df, x='time_parsed', y='wave_period',
+                            title='⏱️ Wave Period Throughout the Day',
+                            labels={'wave_period': 'Wave Period (sec)', 'time_parsed': 'Time'})
+        fig_period.update_layout(height=300, showlegend=False)
+        charts['wave_period'] = fig_period
+        
+        # Wind Speed Chart
+        fig_wind = px.line(df, x='time_parsed', y='wind_speed',
+                          title='💨 Wind Speed Throughout the Day',
+                          labels={'wind_speed': 'Wind Speed (mph)', 'time_parsed': 'Time'})
+        fig_wind.update_layout(height=300, showlegend=False)
+        charts['wind_speed'] = fig_wind
+        
+        # Tide Chart
+        fig_tide = px.line(df, x='time_parsed', y='tide',
+                          title='🌊 Tide Throughout the Day',
+                          labels={'tide': 'Tide (ft)', 'time_parsed': 'Time'})
+        fig_tide.update_layout(height=300, showlegend=False)
+        charts['tide'] = fig_tide
+        
+        # Air Temperature Chart
+        fig_air_temp = px.line(df, x='time_parsed', y='air_temperature',
+                              title='🌡️ Air Temperature Throughout the Day',
+                              labels={'air_temperature': 'Air Temperature (°F)', 'time_parsed': 'Time'})
+        fig_air_temp.update_layout(height=300, showlegend=False)
+        charts['air_temperature'] = fig_air_temp
+        
+        # Humidity Chart
+        fig_humidity = px.line(df, x='time_parsed', y='humidity',
+                              title='💧 Humidity Throughout the Day',
+                              labels={'humidity': 'Humidity (%)', 'time_parsed': 'Time'})
+        fig_humidity.update_layout(height=300, showlegend=False)
+        charts['humidity'] = fig_humidity
+        
+        # Water Temperature Chart
+        fig_water_temp = px.line(df, x='time_parsed', y='water_temperature',
+                                title='🏊 Water Temperature Throughout the Day',
+                                labels={'water_temperature': 'Water Temperature (°F)', 'time_parsed': 'Time'})
+        fig_water_temp.update_layout(height=300, showlegend=False)
+        charts['water_temperature'] = fig_water_temp
+        
+        return charts
+        
+    except Exception as e:
+        st.error(f"Error creating charts: {str(e)}")
+        return None
 
 # Configure page
 st.set_page_config(
@@ -151,6 +246,29 @@ def main():
                     
                     for i, time_slot in enumerate(best_times, 1):
                         st.write(f"**{i}.** {time_slot['time'][:16]} - {time_slot['wave_height']}ft waves, {time_slot['wind_speed']} mph wind (Score: {time_slot['score']:.1f})")
+            
+            # Display surf condition charts
+            if st.session_state.show_real_data and hasattr(st.session_state, 'hourly_data'):
+                if 'error' not in st.session_state.hourly_data:
+                    st.markdown("### 📊 Surf Conditions Throughout the Day")
+                    
+                    # Create charts
+                    charts = create_surf_charts(st.session_state.hourly_data)
+                    
+                    if charts:
+                        # Display charts in a grid
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.plotly_chart(charts['wave_height'], use_container_width=True)
+                            st.plotly_chart(charts['wave_period'], use_container_width=True)
+                            st.plotly_chart(charts['wind_speed'], use_container_width=True)
+                            st.plotly_chart(charts['tide'], use_container_width=True)
+                        
+                        with col2:
+                            st.plotly_chart(charts['air_temperature'], use_container_width=True)
+                            st.plotly_chart(charts['humidity'], use_container_width=True)
+                            st.plotly_chart(charts['water_temperature'], use_container_width=True)
             
             # Display AI analysis
             if st.session_state.show_ai_analysis and hasattr(st.session_state, 'ai_analysis'):
