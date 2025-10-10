@@ -75,9 +75,14 @@ def main():
                             st.session_state.hourly_data = data_fetcher.get_hourly_conditions(surf_beach)
                             st.session_state.best_times = data_fetcher.get_best_surf_times(surf_beach)
                         
-                        # Get AI analysis
+                        # Get AI analysis with real surf data
                         if show_ai_analysis:
-                            st.session_state.ai_analysis = summarizer.get_surf_conditions(surf_beach)
+                            # Combine current and hourly data for AI analysis
+                            combined_data = {
+                                'current_conditions': st.session_state.real_data.get('current_conditions', {}),
+                                'hourly_conditions': st.session_state.hourly_data.get('hourly_conditions', [])
+                            }
+                            st.session_state.ai_analysis = summarizer.get_surf_conditions(surf_beach, combined_data)
                         
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
