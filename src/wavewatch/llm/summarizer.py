@@ -2,7 +2,7 @@
 LLM summarizer using Google Gemini for surf condition analysis.
 """
 
-import google.generativeai as genai
+from google import genai
 import os
 from typing import Optional
 from .prompt_templates import SURF_CONDITIONS_PROMPT
@@ -24,8 +24,7 @@ class SurfSummarizer:
         if not api_key:
             raise ValueError("Gemini API key is required. Set GEMINI_API_KEY environment variable or pass api_key parameter.")
         
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.client = genai.Client(api_key=api_key)
     
     def get_surf_conditions(self, surf_beach: str) -> str:
         """
@@ -39,7 +38,10 @@ class SurfSummarizer:
         """
         try:
             prompt = SURF_CONDITIONS_PROMPT.format(surf_beach=surf_beach)
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model='gemini-2.0-flash-001',
+                contents=prompt
+            )
             return response.text
         except Exception as e:
             return f"Error generating surf conditions: {str(e)}"
