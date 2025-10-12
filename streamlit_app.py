@@ -4,13 +4,18 @@ A simple Streamlit app to get surf conditions for any beach.
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import folium
+from folium import plugins
+import math
 from datetime import datetime
 from dotenv import load_dotenv
 from src.wavewatch.llm.summarizer import SurfSummarizer
+from src.wavewatch.llm.prompt_templates import ONE_SENTENCE_SUMMARY_PROMPT
 from src.wavewatch.api.data_fetcher import StormglassDataFetcher
 
 # Load environment variables from .env file
@@ -107,6 +112,135 @@ def create_surf_charts(hourly_data):
         st.error(f"Error creating charts: {str(e)}")
         return None
 
+def create_surf_map(beach_name, coordinates, current_conditions):
+    """Create a Folium map showing surf location with swell and wind direction."""
+    try:
+        lat, lng = coordinates['lat'], coordinates['lng']
+        
+        # Create base map
+        m = folium.Map(
+            location=[lat, lng],
+            zoom_start=15,
+            tiles='OpenStreetMap'
+        )
+        
+        # Add beach marker
+        folium.Marker(
+            [lat, lng],
+            popup=f"<b>{beach_name}</b><br>Surf Location",
+            tooltip=beach_name,
+            icon=folium.Icon(color='blue', icon='water', prefix='fa')
+        ).add_to(m)
+        
+        # Get current conditions
+        wave_height = current_conditions.get('wave_height', 0)
+        wave_direction = current_conditions.get('wave_direction', 0)
+        wind_speed = current_conditions.get('wind_speed', 0)
+        wind_direction = current_conditions.get('wind_direction', 0)
+        
+        # Convert directions to radians for calculations
+        wave_dir_rad = math.radians(float(wave_direction)) if wave_direction != 'N/A' else 0
+        wind_dir_rad = math.radians(float(wind_direction)) if wind_direction != 'N/A' else 0
+        
+        # Calculate arrow endpoints (swell comes FROM the direction, wind blows TO the direction)
+        # For swell: arrow points FROM the direction the swell is coming from
+        # For wind: arrow points TO the direction the wind is blowing
+        arrow_length = 0.01  # Adjust for visibility
+        
+        # Swell direction arrow (pointing FROM the swell direction)
+        swell_end_lat = lat - arrow_length * math.cos(wave_dir_rad)
+        swell_end_lng = lng - arrow_length * math.sin(wave_dir_rad)
+        
+        # Wind direction arrow (pointing TO the wind direction)
+        wind_end_lat = lat + arrow_length * math.cos(wind_dir_rad)
+        wind_end_lng = lng + arrow_length * math.sin(wind_dir_rad)
+        
+        # Add swell direction arrow
+        if wave_direction != 'N/A' and wave_height != 'N/A':
+            folium.PolyLine(
+                locations=[[lat, lng], [swell_end_lat, swell_end_lng]],
+                color='blue',
+                weight=6,
+                opacity=0.8,
+                popup=f"Swell: {wave_height}ft from {wave_direction}°"
+            ).add_to(m)
+            
+            # Add swell arrowhead
+            folium.Marker(
+                [swell_end_lat, swell_end_lng],
+                icon=folium.Icon(color='blue', icon='arrow-up', prefix='fa'),
+                popup=f"Swell Direction: {wave_direction}°"
+            ).add_to(m)
+        
+        # Add wind direction arrow
+        if wind_direction != 'N/A' and wind_speed != 'N/A':
+            folium.PolyLine(
+                locations=[[lat, lng], [wind_end_lat, wind_end_lng]],
+                color='red',
+                weight=4,
+                opacity=0.8,
+                popup=f"Wind: {wind_speed}mph to {wind_direction}°"
+            ).add_to(m)
+            
+            # Add wind arrowhead
+            folium.Marker(
+                [wind_end_lat, wind_end_lng],
+                icon=folium.Icon(color='red', icon='arrow-up', prefix='fa'),
+                popup=f"Wind Direction: {wind_direction}°"
+            ).add_to(m)
+        
+        # Add legend
+        legend_html = '''
+        <div style="position: fixed; 
+                    bottom: 50px; left: 50px; width: 200px; height: 90px; 
+                    background-color: white; border:2px solid grey; z-index:9999; 
+                    font-size:14px; padding: 10px">
+        <p><b>Direction Legend:</b></p>
+        <p><i class="fa fa-arrow-up" style="color:blue"></i> Swell Direction</p>
+        <p><i class="fa fa-arrow-up" style="color:red"></i> Wind Direction</p>
+        </div>
+        '''
+        m.get_root().html.add_child(folium.Element(legend_html))
+        
+        return m
+        
+    except Exception as e:
+        st.error(f"Error creating surf map: {str(e)}")
+        return None
+
+def get_one_sentence_summary(beach_name, current_conditions, summarizer):
+    """Generate a one-sentence summary of current surf conditions using AI."""
+    try:
+        # Format the current conditions for the AI
+        formatted_conditions = f"""
+Current surf conditions at {beach_name}:
+- Wave Height: {current_conditions.get('wave_height', 'N/A')} ft
+- Wave Period: {current_conditions.get('wave_period', 'N/A')} sec
+- Wave Direction: {current_conditions.get('wave_direction', 'N/A')}°
+- Wind Speed: {current_conditions.get('wind_speed', 'N/A')} mph
+- Wind Direction: {current_conditions.get('wind_direction', 'N/A')}°
+- Water Temperature: {current_conditions.get('water_temperature', 'N/A')}°F
+- Air Temperature: {current_conditions.get('air_temperature', 'N/A')}°F
+- Tide: {current_conditions.get('tide', 'N/A')} ft
+"""
+        
+        # Use the prompt template
+        prompt = ONE_SENTENCE_SUMMARY_PROMPT.format(
+            beach_name=beach_name,
+            formatted_conditions=formatted_conditions
+        )
+        
+        # Get AI summary
+        response = summarizer.client.models.generate_content(
+            model='gemini-2.0-flash-001',
+            contents=prompt
+        )
+        
+        return response.text.strip()
+        
+    except Exception as e:
+        return f"🌊 Surf conditions at {beach_name} are currently being assessed."
+
 # Configure page
 st.set_page_config(
     page_title="WaveWatch",
@@ -188,6 +322,21 @@ def main():
         if hasattr(st.session_state, 'beach') and st.session_state.beach:
             st.subheader(f"Conditions for {st.session_state.beach}")
             
+            # Display one-sentence summary
+            if st.session_state.show_real_data and hasattr(st.session_state, 'real_data'):
+                if 'error' not in st.session_state.real_data:
+                    # Initialize summarizer for one-sentence summary
+                    gemini_api_key = os.getenv('GEMINI_API_KEY')
+                    summarizer = SurfSummarizer(api_key=gemini_api_key)
+                    
+                    summary = get_one_sentence_summary(
+                        st.session_state.beach,
+                        st.session_state.real_data['current_conditions'],
+                        summarizer
+                    )
+                    st.markdown(f"**{summary}**")
+                    st.markdown("---")
+            
             # Display real surf data
             if st.session_state.show_real_data and hasattr(st.session_state, 'real_data'):
                 if 'error' in st.session_state.real_data:
@@ -202,17 +351,21 @@ def main():
                     with col_a:
                         st.metric("Wave Height", f"{real_data['wave_height']} ft")
                         st.metric("Wave Period", f"{real_data['wave_period']} sec")
+                        st.metric("Wave Direction", f"{real_data['wave_direction']}°")
                         st.metric("Wind Speed", f"{real_data['wind_speed']} mph")
+                        st.metric("Wind Direction", f"{real_data['wind_direction']}°")
                     
                     with col_b:
                         st.metric("Water Temp", f"{real_data['water_temperature']}°F")
                         st.metric("Air Temp", f"{real_data['air_temperature']}°F")
                         st.metric("Tide", f"{real_data['tide']} ft")
-                    
-                    with col_c:
                         st.metric("Pressure", f"{real_data['pressure']} mb")
                         st.metric("Humidity", f"{real_data['humidity']}%")
+                    
+                    with col_c:
                         st.metric("Visibility", f"{real_data['visibility']} mi")
+                        st.metric("Cloud Cover", f"{real_data['cloud_cover']}%")
+                        st.metric("Precipitation", f"{real_data['precipitation']} in")
                     
                     # Show cache status
                     if st.session_state.real_data.get('cached', False):
@@ -233,9 +386,11 @@ def main():
                             col_a, col_b = st.columns(2)
                             with col_a:
                                 st.write(f"**Waves:** {hour['wave_height']}ft @ {hour['wave_period']}s")
+                                st.write(f"**Wave Direction:** {hour['wave_direction']}°")
                                 st.write(f"**Wind:** {hour['wind_speed']} mph @ {hour['wind_direction']}°")
                             with col_b:
                                 st.write(f"**Water:** {hour['water_temperature']}°F")
+                                st.write(f"**Air:** {hour['air_temperature']}°F")
                                 st.write(f"**Tide:** {hour['tide']} ft")
             
             # Display best surf times
@@ -246,6 +401,22 @@ def main():
                     
                     for i, time_slot in enumerate(best_times, 1):
                         st.write(f"**{i}.** {time_slot['time'][:16]} - {time_slot['wave_height']}ft waves, {time_slot['wind_speed']} mph wind (Score: {time_slot['score']:.1f})")
+            
+            # Display surf map
+            if st.session_state.show_real_data and hasattr(st.session_state, 'real_data'):
+                if 'error' not in st.session_state.real_data:
+                    st.markdown("### 🗺️ Surf Location Map")
+                    
+                    # Create surf map
+                    surf_map = create_surf_map(
+                        st.session_state.beach,
+                        st.session_state.real_data['coordinates'],
+                        st.session_state.real_data['current_conditions']
+                    )
+                    
+                    if surf_map:
+                        # Display the map
+                        components.html(surf_map._repr_html_(), height=500)
             
             # Display surf condition charts
             if st.session_state.show_real_data and hasattr(st.session_state, 'hourly_data'):
