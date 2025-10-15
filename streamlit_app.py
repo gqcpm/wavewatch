@@ -34,25 +34,51 @@ def create_surf_charts(hourly_data):
         # Get current date to filter out next day's data
         current_date = datetime.now().strftime('%Y-%m-%d')
         
+        # Debug: Check if we have data
+        if not hours:
+            st.warning("No hourly data available for charts")
+            return None
+        
+        # Debug: Show first hour structure
+        if hours and len(hours) > 0:
+            st.write(f"Debug: First hour data keys: {list(hours[0].keys())}")
+            st.write(f"Debug: First hour time: {hours[0].get('time', 'NO_TIME_FIELD')}")
+        
         for hour in hours:
             hour_time = hour.get('time', '')
-            # Only include data from current day
+            # Only include data from current day (or selected date)
             if hour_time.startswith(current_date):
-                df_data.append({
-                    'time': hour_time,
-                    'wave_height': float(hour.get('wave_height', 0)) if hour.get('wave_height') != 'N/A' else 0,
-                    'wave_period': float(hour.get('wave_period', 0)) if hour.get('wave_period') != 'N/A' else 0,
-                    'wind_speed': float(hour.get('wind_speed', 0)) if hour.get('wind_speed') != 'N/A' else 0,
-                    'tide': float(hour.get('tide', 0)) if hour.get('tide') != 'N/A' else 0,
-                    'air_temperature': float(hour.get('air_temperature', 0)) if hour.get('air_temperature') != 'N/A' else 0,
-                    'humidity': float(hour.get('humidity', 0)) if hour.get('humidity') != 'N/A' else 0,
-                    'water_temperature': float(hour.get('water_temperature', 0)) if hour.get('water_temperature') != 'N/A' else 0
-                })
+                try:
+                    df_data.append({
+                        'time': hour_time,
+                        'wave_height': float(hour.get('wave_height', 0)) if hour.get('wave_height') != 'N/A' and hour.get('wave_height') is not None else 0,
+                        'wave_period': float(hour.get('wave_period', 0)) if hour.get('wave_period') != 'N/A' and hour.get('wave_period') is not None else 0,
+                        'wind_speed': float(hour.get('wind_speed', 0)) if hour.get('wind_speed') != 'N/A' and hour.get('wind_speed') is not None else 0,
+                        'tide': float(hour.get('tide', 0)) if hour.get('tide') != 'N/A' and hour.get('tide') is not None else 0,
+                        'air_temperature': float(hour.get('air_temperature', 0)) if hour.get('air_temperature') != 'N/A' and hour.get('air_temperature') is not None else 0,
+                        'humidity': float(hour.get('humidity', 0)) if hour.get('humidity') != 'N/A' and hour.get('humidity') is not None else 0,
+                        'water_temperature': float(hour.get('water_temperature', 0)) if hour.get('water_temperature') != 'N/A' and hour.get('water_temperature') is not None else 0
+                    })
+                except (ValueError, TypeError) as e:
+                    st.warning(f"Skipping hour with invalid data: {e}")
+                    continue
         
+        if not df_data:
+            st.warning("No valid data found for chart creation")
+            return None
+            
         df = pd.DataFrame(df_data)
         
+        if df.empty:
+            st.warning("No data available for charts")
+            return None
+        
         # Parse time for better x-axis
-        df['time_parsed'] = pd.to_datetime(df['time']).dt.strftime('%H:%M')
+        try:
+            df['time_parsed'] = pd.to_datetime(df['time']).dt.strftime('%H:%M')
+        except Exception as e:
+            st.error(f"Error parsing time data: {str(e)}")
+            return None
         
         # Create charts
         charts = {}
@@ -278,6 +304,14 @@ def main():
             help="Enter the name of the surf break you want to check"
         )
         
+        # Date selection
+        st.subheader("Date Selection")
+        selected_date = st.date_input(
+            "Select date for surf conditions:",
+            value=datetime.now().date(),
+            help="Choose which date to get surf data and analysis for"
+        )
+        
         # Data source selection
         st.subheader("Data Sources")
         show_real_data = st.checkbox("Show Real Surf Data", value=True, help="Display actual surf conditions from Stormglass API")
@@ -295,14 +329,17 @@ def main():
                         
                         # Store in session state for display
                         st.session_state.beach = surf_beach
+                        st.session_state.selected_date = selected_date
                         st.session_state.show_real_data = show_real_data
                         st.session_state.show_ai_analysis = show_ai_analysis
                         
                         # Get real surf data
                         if show_real_data:
-                            st.session_state.real_data = data_fetcher.get_current_conditions(surf_beach)
-                            st.session_state.hourly_data = data_fetcher.get_hourly_conditions(surf_beach)
-                            st.session_state.best_times = data_fetcher.get_best_surf_times(surf_beach)
+                            # Convert date to string format
+                            date_str = selected_date.strftime('%Y-%m-%d')
+                            st.session_state.real_data = data_fetcher.get_current_conditions(surf_beach, target_date=date_str)
+                            st.session_state.hourly_data = data_fetcher.get_hourly_conditions(surf_beach, target_date=date_str)
+                            st.session_state.best_times = data_fetcher.get_best_surf_times(surf_beach, target_date=date_str)
                         
                         # Get AI analysis with real surf data
                         if show_ai_analysis:
@@ -320,7 +357,8 @@ def main():
         st.header("Surf Conditions")
         
         if hasattr(st.session_state, 'beach') and st.session_state.beach:
-            st.subheader(f"Conditions for {st.session_state.beach}")
+            date_display = st.session_state.selected_date.strftime('%B %d, %Y') if hasattr(st.session_state, 'selected_date') else datetime.now().strftime('%B %d, %Y')
+            st.subheader(f"Conditions for {st.session_state.beach} - {date_display}")
             
             # Display one-sentence summary
             if st.session_state.show_real_data and hasattr(st.session_state, 'real_data'):
@@ -358,7 +396,10 @@ def main():
                     with col_b:
                         st.metric("Water Temp", f"{real_data['water_temperature']}°F")
                         st.metric("Air Temp", f"{real_data['air_temperature']}°F")
-                        st.metric("Tide", f"{real_data['tide']} ft")
+                        if real_data['tide'] != 'N/A':
+                            st.metric("Tide", f"{real_data['tide']} ft")
+                        else:
+                            st.metric("Tide", "N/A", help="Tide data not available for this location")
                         st.metric("Pressure", f"{real_data['pressure']} mb")
                         st.metric("Humidity", f"{real_data['humidity']}%")
                     
@@ -372,6 +413,10 @@ def main():
                         st.success("✅ Data from cache (no API call made)")
                     else:
                         st.info("🔄 Fresh data from API")
+                    
+                    # Show tide station info if available
+                    if 'tide_data' in st.session_state.real_data and 'station_name' in st.session_state.real_data['tide_data']:
+                        st.info(f"🌊 Tide data from: {st.session_state.real_data['tide_data']['station_name']} (Station ID: {st.session_state.real_data['tide_data']['station_id']})")
             
             # Display hourly data
             if st.session_state.show_real_data and hasattr(st.session_state, 'hourly_data'):

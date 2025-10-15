@@ -10,6 +10,7 @@ import requests
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 from dotenv import load_dotenv
+from noaa_coops import Station
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +35,23 @@ class StormglassDataFetcher:
         self.base_url = "https://api.stormglass.io/v2"
         self.cache_file = "surf_data_cache.json"
         self.cache_expiry = 86400  # 24 hours in seconds
+        
+        # Mapping of beaches to nearest NOAA tide stations
+        self.tide_stations = {
+            "pleasure point": "9413745",  # Santa Cruz, Monterey Bay, CA
+            "malibu": "9410660",         # Los Angeles, CA
+            "pipeline": "1612340",       # Honolulu, HI
+            "trestles": "9410660",       # Los Angeles, CA (closest)
+            "mavericks": "9413450",      # Half Moon Bay, CA
+            "huntington beach": "9410660", # Los Angeles, CA
+            "venice beach": "9410660",   # Los Angeles, CA
+            "manhattan beach": "9410660", # Los Angeles, CA
+            "hermosa beach": "9410660",  # Los Angeles, CA
+            "redondo beach": "9410660", # Los Angeles, CA
+            "el segundo": "9410660",    # Los Angeles, CA
+            "scripps": "9410230",       # La Jolla, CA
+            "tourmaline": "9410230",    # La Jolla, CA
+        }
         
         # Common surf beach coordinates (lat, lng)
         self.beach_coordinates = {
@@ -136,7 +154,71 @@ class StormglassDataFetcher:
         
         return None
     
-    def fetch_surf_data(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None) -> Dict:
+    def _get_noaa_tide_data(self, beach_name: str, target_date: str = None) -> Dict:
+        """
+        Get tide data from NOAA CO-OPS for the nearest tide station.
+        
+        Args:
+            beach_name: Name of the surf beach
+            target_date: Target date in YYYY-MM-DD format
+            
+        Returns:
+            Dictionary with tide data or error information
+        """
+        try:
+            # Get the tide station ID for this beach
+            station_id = self.tide_stations.get(beach_name.lower())
+            if not station_id:
+                return {'error': f'No tide station found for {beach_name}'}
+            
+            # Parse target date or use current date
+            if target_date:
+                if isinstance(target_date, str):
+                    date_obj = datetime.strptime(target_date, '%Y-%m-%d')
+                else:
+                    date_obj = target_date  # Already a datetime object
+            else:
+                date_obj = datetime.now()
+            
+            # Create station object
+            station = Station(station_id)
+            
+            # Get hourly tide data for the day
+            # Convert datetime to string format that NOAA CO-OPS expects
+            date_str = date_obj.strftime('%Y%m%d')
+            tide_data = station.get_data(
+                begin_date=date_str,
+                end_date=date_str,
+                product='hourly_height',
+                datum='MLLW',
+                units='metric',
+                time_zone='gmt'
+            )
+            
+            if tide_data.empty:
+                return {'error': 'No tide data available for this date'}
+            
+            # Convert to our format
+            tide_conditions = []
+            for index, row in tide_data.iterrows():
+                # Convert timestamp to ISO format
+                iso_time = index.strftime('%Y-%m-%dT%H:%M:%S+00:00')
+                
+                tide_conditions.append({
+                    'time': iso_time,
+                    'tide': round(float(row['hourly_height']) * 3.28084, 2)  # Convert meters to feet
+                })
+            
+            return {
+                'tide_conditions': tide_conditions,
+                'station_id': station_id,
+                'station_name': f'Station {station_id}'
+            }
+            
+        except Exception as e:
+            return {'error': f'Error fetching NOAA tide data: {str(e)}'}
+    
+    def fetch_surf_data(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None, target_date: str = None) -> Dict:
         """
         Fetch surf data for a beach with caching.
         
@@ -144,6 +226,7 @@ class StormglassDataFetcher:
             beach_name: Name of the surf beach
             lat: Latitude (optional, will lookup if not provided)
             lng: Longitude (optional, will lookup if not provided)
+            target_date: Target date in YYYY-MM-DD format (optional, defaults to current day)
             
         Returns:
             Dictionary containing surf data or error information
@@ -160,7 +243,9 @@ class StormglassDataFetcher:
         
         # Check cache first
         cache = self._load_cache()
-        cache_key = f"{lat},{lng}"
+        # Create cache key with date
+        date_suffix = f"_{target_date}" if target_date else ""
+        cache_key = f"{lat},{lng}{date_suffix}"
         current_time = time.time()
         
         if cache_key in cache:
@@ -170,6 +255,7 @@ class StormglassDataFetcher:
                     'beach_name': beach_name,
                     'coordinates': {'lat': lat, 'lng': lng},
                     'data': cached_data['data'],
+                    'tide_data': cached_data.get('tide_data', {}),
                     'cached': True,
                     'timestamp': cached_data['timestamp']
                 }
@@ -197,8 +283,8 @@ class StormglassDataFetcher:
                     'seaLevel'        # Sea level (tide equivalent)
                 ]),
                 'source': 'noaa',  # Use NOAA as primary source
-                'start': int(datetime.now().replace(hour=0, minute=0, second=0).timestamp()),  # Start of current day
-                'end': int(datetime.now().replace(hour=23, minute=59, second=59).timestamp())  # End of current day
+                'start': int((datetime.strptime(target_date, '%Y-%m-%d') if isinstance(target_date, str) else target_date).replace(hour=0, minute=0, second=0).timestamp()) if target_date else int(datetime.now().replace(hour=0, minute=0, second=0).timestamp()),  # Start of target day
+                'end': int((datetime.strptime(target_date, '%Y-%m-%d') if isinstance(target_date, str) else target_date).replace(hour=23, minute=59, second=59).timestamp()) if target_date else int(datetime.now().replace(hour=23, minute=59, second=59).timestamp())  # End of target day
             }
             
             headers = {
@@ -210,17 +296,23 @@ class StormglassDataFetcher:
             if response.status_code == 200:
                 data = response.json()
                 
+                # Get NOAA tide data
+                tide_data = self._get_noaa_tide_data(beach_name, target_date)
+                
                 # Cache the data
-                cache[cache_key] = {
+                cache_data = {
                     'data': data,
+                    'tide_data': tide_data,
                     'timestamp': current_time
                 }
+                cache[cache_key] = cache_data
                 self._save_cache(cache)
                 
                 return {
                     'beach_name': beach_name,
                     'coordinates': {'lat': lat, 'lng': lng},
                     'data': data,
+                    'tide_data': tide_data,
                     'cached': False,
                     'timestamp': current_time
                 }
@@ -244,7 +336,7 @@ class StormglassDataFetcher:
                 'coordinates': {'lat': lat, 'lng': lng}
             }
     
-    def get_hourly_conditions(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None) -> Dict:
+    def get_hourly_conditions(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None, target_date: str = None) -> Dict:
         """
         Get hourly surf conditions for the entire day.
         
@@ -256,7 +348,7 @@ class StormglassDataFetcher:
         Returns:
             Dictionary with hourly conditions for the day
         """
-        result = self.fetch_surf_data(beach_name, lat, lng)
+        result = self.fetch_surf_data(beach_name, lat, lng, target_date)
         
         if 'error' in result:
             return result
@@ -283,8 +375,22 @@ class StormglassDataFetcher:
                 visibility_km = hour_data.get('visibility', {}).get('noaa', 'N/A')
                 visibility_mi = round(float(visibility_km) * 0.621371, 1) if visibility_km != 'N/A' else 'N/A'
                 
-                sea_level_m = hour_data.get('seaLevel', {}).get('noaa', 'N/A')
-                tide_ft = round(float(sea_level_m) * 3.28084, 1) if sea_level_m != 'N/A' else 'N/A'
+                # Get tide data from NOAA CO-OPS if available
+                tide_ft = 'N/A'
+                if 'tide_data' in result and 'tide_conditions' in result['tide_data']:
+                    # Find matching tide data for this hour
+                    hour_time = hour_data.get('time', '')
+                    for tide_entry in result['tide_data']['tide_conditions']:
+                        if tide_entry['time'] == hour_time:
+                            tide_ft = tide_entry['tide']
+                            break
+                
+                # Fallback to Stormglass data if NOAA data not available
+                if tide_ft == 'N/A':
+                    sea_level_m = hour_data.get('seaLevel', {}).get('noaa', 'N/A')
+                    
+                    if sea_level_m != 'N/A':
+                        tide_ft = round(float(sea_level_m) * 3.28084, 1)
                 
                 hourly_conditions.append({
                     'time': hour_data.get('time', 'N/A'),
@@ -318,7 +424,7 @@ class StormglassDataFetcher:
                 'coordinates': result['coordinates']
             }
     
-    def get_best_surf_times(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None, min_wave_height: float = 2.0) -> Dict:
+    def get_best_surf_times(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None, min_wave_height: float = 2.0, target_date: str = None) -> Dict:
         """
         Get the best surf times for the day based on wave height and conditions.
         
@@ -383,7 +489,7 @@ class StormglassDataFetcher:
                 'coordinates': result['coordinates']
             }
     
-    def get_current_conditions(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None) -> Dict:
+    def get_current_conditions(self, beach_name: str, lat: Optional[float] = None, lng: Optional[float] = None, target_date: str = None) -> Dict:
         """
         Get current surf conditions in a simplified format.
         
@@ -395,7 +501,7 @@ class StormglassDataFetcher:
         Returns:
             Dictionary with current conditions
         """
-        result = self.fetch_surf_data(beach_name, lat, lng)
+        result = self.fetch_surf_data(beach_name, lat, lng, target_date)
         
         if 'error' in result:
             return result
@@ -420,8 +526,22 @@ class StormglassDataFetcher:
             visibility_km = current_hour.get('visibility', {}).get('noaa', 'N/A')
             visibility_mi = round(float(visibility_km) * 0.621371, 1) if visibility_km != 'N/A' else 'N/A'
             
-            sea_level_m = current_hour.get('seaLevel', {}).get('noaa', 'N/A')
-            tide_ft = round(float(sea_level_m) * 3.28084, 1) if sea_level_m != 'N/A' else 'N/A'
+            # Get tide data from NOAA CO-OPS if available
+            tide_ft = 'N/A'
+            if 'tide_data' in result and 'tide_conditions' in result['tide_data']:
+                # Find current hour tide data
+                current_time = current_hour.get('time', '')
+                for tide_entry in result['tide_data']['tide_conditions']:
+                    if tide_entry['time'] == current_time:
+                        tide_ft = tide_entry['tide']
+                        break
+            
+            # Fallback to Stormglass data if NOAA data not available
+            if tide_ft == 'N/A':
+                sea_level_m = current_hour.get('seaLevel', {}).get('noaa', 'N/A')
+                
+                if sea_level_m != 'N/A':
+                    tide_ft = round(float(sea_level_m) * 3.28084, 1)
             
             return {
                 'beach_name': result['beach_name'],
