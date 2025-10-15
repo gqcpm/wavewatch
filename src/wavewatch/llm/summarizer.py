@@ -26,13 +26,14 @@ class SurfSummarizer:
         
         self.client = genai.Client(api_key=api_key)
     
-    def get_surf_conditions(self, surf_beach: str, surf_data: dict = None) -> str:
+    def get_surf_conditions(self, surf_beach: str, surf_data: dict = None, selected_date: str = None) -> str:
         """
         Get surf conditions summary for a specific beach using real surf data.
         
         Args:
             surf_beach: Name of the surf beach/break
             surf_data: Real surf data from Stormglass API (optional)
+            selected_date: Selected date for analysis (optional)
             
         Returns:
             String containing surf conditions summary
@@ -43,7 +44,8 @@ class SurfSummarizer:
                 formatted_data = self._format_surf_data(surf_data)
                 prompt = SURF_CONDITIONS_PROMPT.format(
                     surf_beach=surf_beach, 
-                    surf_data=formatted_data
+                    surf_data=formatted_data,
+                    selected_date=selected_date or "today"
                 )
             else:
                 # Fallback to general knowledge if no data provided
@@ -56,6 +58,36 @@ class SurfSummarizer:
             return response.text
         except Exception as e:
             return f"Error generating surf conditions: {str(e)}"
+    
+    def get_one_sentence_summary(self, beach_name: str, surf_data: dict, selected_date: str = None) -> str:
+        """
+        Get a one-sentence summary of surf conditions.
+        
+        Args:
+            beach_name: Name of the surf beach/break
+            surf_data: Real surf data from API
+            selected_date: Selected date for analysis (optional)
+            
+        Returns:
+            One-sentence summary of surf conditions
+        """
+        try:
+            # Format the surf data for the prompt
+            formatted_data = self._format_surf_data(surf_data)
+            
+            prompt = ONE_SENTENCE_SUMMARY_PROMPT.format(
+                beach_name=beach_name,
+                formatted_conditions=formatted_data,
+                selected_date=selected_date or "today"
+            )
+            
+            response = self.client.models.generate_content(
+                model='gemini-2.0-flash-001',
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            return f"Error generating summary: {str(e)}"
     
     def _format_surf_data(self, surf_data: dict) -> str:
         """

@@ -234,36 +234,11 @@ def create_surf_map(beach_name, coordinates, current_conditions):
         st.error(f"Error creating surf map: {str(e)}")
         return None
 
-def get_one_sentence_summary(beach_name, current_conditions, summarizer):
+def get_one_sentence_summary(beach_name, current_conditions, summarizer, selected_date=None):
     """Generate a one-sentence summary of current surf conditions using AI."""
     try:
-        # Format the current conditions for the AI
-        formatted_conditions = f"""
-Current surf conditions at {beach_name}:
-- Wave Height: {current_conditions.get('wave_height', 'N/A')} ft
-- Wave Period: {current_conditions.get('wave_period', 'N/A')} sec
-- Wave Direction: {current_conditions.get('wave_direction', 'N/A')}°
-- Wind Speed: {current_conditions.get('wind_speed', 'N/A')} mph
-- Wind Direction: {current_conditions.get('wind_direction', 'N/A')}°
-- Water Temperature: {current_conditions.get('water_temperature', 'N/A')}°F
-- Air Temperature: {current_conditions.get('air_temperature', 'N/A')}°F
-- Tide: {current_conditions.get('tide', 'N/A')} ft
-"""
-        
-        # Use the prompt template
-        prompt = ONE_SENTENCE_SUMMARY_PROMPT.format(
-            beach_name=beach_name,
-            formatted_conditions=formatted_conditions
-        )
-        
-        # Get AI summary
-        response = summarizer.client.models.generate_content(
-            model='gemini-2.0-flash-001',
-            contents=prompt
-        )
-        
-        return response.text.strip()
-        
+        # Use the new summarizer method
+        return summarizer.get_one_sentence_summary(beach_name, current_conditions, selected_date)
     except Exception as e:
         return f"🌊 Surf conditions at {beach_name} are currently being assessed."
 
@@ -348,7 +323,7 @@ def main():
                                 'current_conditions': st.session_state.real_data.get('current_conditions', {}),
                                 'hourly_conditions': st.session_state.hourly_data.get('hourly_conditions', [])
                             }
-                            st.session_state.ai_analysis = summarizer.get_surf_conditions(surf_beach, combined_data)
+                            st.session_state.ai_analysis = summarizer.get_surf_conditions(surf_beach, combined_data, selected_date)
                         
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
@@ -370,7 +345,8 @@ def main():
                     summary = get_one_sentence_summary(
                         st.session_state.beach,
                         st.session_state.real_data['current_conditions'],
-                        summarizer
+                        summarizer,
+                        selected_date
                     )
                     st.markdown(f"**{summary}**")
                     st.markdown("---")
