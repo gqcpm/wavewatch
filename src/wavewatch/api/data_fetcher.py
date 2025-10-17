@@ -38,7 +38,7 @@ class StormglassDataFetcher:
         
         # Mapping of beaches to nearest NOAA tide stations
         self.tide_stations = {
-            "pleasure point": "9413745",  # Santa Cruz, Monterey Bay, CA
+            "pleasure point": "9413450",  # Monterey, CA (reference station for Santa Cruz)
             "malibu": "9410660",         # Los Angeles, CA
             "pipeline": "1612340",       # Honolulu, HI
             "trestles": "9410660",       # Los Angeles, CA (closest)
@@ -51,6 +51,18 @@ class StormglassDataFetcher:
             "el segundo": "9410660",    # Los Angeles, CA
             "scripps": "9410230",       # La Jolla, CA
             "tourmaline": "9410230",    # La Jolla, CA
+        }
+        
+        # Station-specific offsets for subordinate stations
+        self.station_offsets = {
+            "9413450": {  # Monterey reference station
+                "pleasure point": {
+                    "time_high": -6,    # minutes
+                    "time_low": -11,    # minutes  
+                    "height_high": 0.97, # multiplier
+                    "height_low": 0.99   # multiplier
+                }
+            }
         }
         
         # Common surf beach coordinates (lat, lng)
@@ -180,34 +192,74 @@ class StormglassDataFetcher:
             else:
                 date_obj = datetime.now()
             
+            # Ensure we have a datetime object for processing
+            if not isinstance(date_obj, datetime):
+                date_obj = datetime.strptime(str(date_obj), '%Y-%m-%d')
+            
             # Create station object
             station = Station(station_id)
             
             # Get hourly tide data for the day
-            # Convert datetime to string format that NOAA CO-OPS expects
+            # NOAA CO-OPS library expects YYYYMMDD format
             date_str = date_obj.strftime('%Y%m%d')
+            # Use water_level product with MLLW datum (works for most stations)
             tide_data = station.get_data(
                 begin_date=date_str,
                 end_date=date_str,
-                product='hourly_height',
+                product='water_level',
                 datum='MLLW',
                 units='metric',
                 time_zone='gmt'
             )
+            print(f"DEBUG: NOAA data shape: {tide_data.shape if hasattr(tide_data, 'shape') else 'No shape'}")
+            print(f"DEBUG: NOAA data empty: {tide_data.empty if hasattr(tide_data, 'empty') else 'No empty attr'}")
+            
+            if hasattr(tide_data, 'columns'):
+                print(f"DEBUG: NOAA data columns: {list(tide_data.columns)}")
+            if hasattr(tide_data, 'head'):
+                print(f"DEBUG: NOAA data sample:")
+                print(tide_data.head(2))
             
             if tide_data.empty:
+                print("DEBUG: NOAA data is empty, returning error")
                 return {'error': 'No tide data available for this date'}
             
-            # Convert to our format
+            # Convert to our format and apply offsets if needed
             tide_conditions = []
             for index, row in tide_data.iterrows():
                 # Convert timestamp to ISO format
                 iso_time = index.strftime('%Y-%m-%dT%H:%M:%S+00:00')
                 
+                # Use 'v' column for water_level data, fallback to 'hourly_height' for other products
+                tide_value = row['v'] if 'v' in row else (row['hourly_height'] if 'hourly_height' in row else 0)
+                tide_ft = round(float(tide_value) * 3.28084, 2)  # Convert meters to feet
+                
+                # Apply Santa Cruz offsets if using Monterey reference station
+                if station_id == "9413450" and beach_name in self.station_offsets.get(station_id, {}):
+                    offsets = self.station_offsets[station_id][beach_name]
+                    # Determine if this is likely a high or low tide based on height
+                    # High tides are typically > 3ft, low tides < 2ft
+                    if tide_ft > 3.0:  # Likely high tide
+                        tide_ft = tide_ft * offsets['height_high']
+                        # Apply time offset (subtract minutes)
+                        time_obj = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S+00:00')
+                        time_obj = time_obj - timedelta(minutes=abs(offsets['time_high']))
+                        iso_time = time_obj.strftime('%Y-%m-%dT%H:%M:%S+00:00')
+                    elif tide_ft < 2.0:  # Likely low tide
+                        tide_ft = tide_ft * offsets['height_low']
+                        # Apply time offset (subtract minutes)
+                        time_obj = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S+00:00')
+                        time_obj = time_obj - timedelta(minutes=abs(offsets['time_low']))
+                        iso_time = time_obj.strftime('%Y-%m-%dT%H:%M:%S+00:00')
+                
                 tide_conditions.append({
                     'time': iso_time,
-                    'tide': round(float(row['hourly_height']) * 3.28084, 2)  # Convert meters to feet
+                    'tide': round(tide_ft, 2)
                 })
+            
+            print(f"DEBUG: Converted {len(tide_conditions)} tide conditions")
+            if tide_conditions:
+                print(f"DEBUG: Sample tide condition: {tide_conditions[0]}")
             
             return {
                 'tide_conditions': tide_conditions,
@@ -380,10 +432,22 @@ class StormglassDataFetcher:
                 if 'tide_data' in result and 'tide_conditions' in result['tide_data']:
                     # Find matching tide data for this hour
                     hour_time = hour_data.get('time', '')
+                    print(f"DEBUG: Looking for tide data for hour {hour_time}")
+                    print(f"DEBUG: Available tide entries: {len(result['tide_data']['tide_conditions'])}")
                     for tide_entry in result['tide_data']['tide_conditions']:
                         if tide_entry['time'] == hour_time:
                             tide_ft = tide_entry['tide']
+                            print(f"DEBUG: Found matching tide data: {tide_ft}")
                             break
+                    if tide_ft == 'N/A':
+                        print(f"DEBUG: No matching tide data found for {hour_time}")
+                        print(f"DEBUG: Available tide times: {[entry['time'] for entry in result['tide_data']['tide_conditions'][:3]]}")
+                else:
+                    print(f"DEBUG: No NOAA tide data available. Result keys: {list(result.keys())}")
+                    if 'tide_data' in result:
+                        print(f"DEBUG: Tide data keys: {list(result['tide_data'].keys())}")
+                        if 'error' in result['tide_data']:
+                            print(f"DEBUG: NOAA tide data error: {result['tide_data']['error']}")
                 
                 # Fallback to Stormglass data if NOAA data not available
                 if tide_ft == 'N/A':
