@@ -1,35 +1,44 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
+// TODO: Add MongoDB when implementing user accounts
+// const mongoose = require('mongoose');
+// const dotenv = require('dotenv');
 
-// Load environment variables
-dotenv.config();
+// TODO: Load environment variables when adding MongoDB
+// dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/wavewatch';
+// TODO: MongoDB Connection (for future user accounts)
+// const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/wavewatch';
+// mongoose.connect(MONGODB_URI, {
+//   useNewUrlParser: true,
+//   useUnifiedTopology: true,
+// })
+// .then(() => console.log('✅ MongoDB connected successfully'))
+// .catch(err => console.error('❌ MongoDB connection error:', err));
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB connected successfully'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
-
-// Routes
-app.use('/api/surf', require('./routes/surf'));
-app.use('/api/auth', require('./routes/auth'));
+// TODO: Add routes when implementing user features
+// app.use('/api/auth', require('./routes/auth'));
+// app.use('/api/users', require('./routes/users'));
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: '🌊 WaveWatch API Server is running!' });
+  res.json({ 
+    message: '🌊 WaveWatch Express Server is running!',
+    note: 'This server acts as a proxy. Surf data comes from Python FastAPI on port 8001',
+    mongodb: 'MongoDB removed for simplicity. Add back when implementing user accounts.'
+  });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware
@@ -39,5 +48,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Express server running on port ${PORT}`);
+  console.log(`📡 Surf data comes from Python FastAPI on port 8001`);
+  console.log(`💡 MongoDB removed - add back when implementing user accounts`);
 });

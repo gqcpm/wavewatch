@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import ReactMarkdown from 'react-markdown';
+import surfApi from '../services/surfApi';
 
 const SurfContainer = styled.div`
   max-width: 1200px;
@@ -90,19 +92,12 @@ const SurfPage = () => {
     setError('');
     
     try {
-      // This would connect to your backend API
-      // const response = await fetch(`/api/surf/${beachName}/${selectedDate}`);
-      // const data = await response.json();
-      
-      // For now, show placeholder
-      setTimeout(() => {
-        setSurfData({
-          beachName: beachName,
-          date: selectedDate,
-          message: 'Surf data will be fetched from your backend API'
-        });
-        setLoading(false);
-      }, 1000);
+          const data = await surfApi.getSurfData(beachName, selectedDate);
+          console.log('DEBUG: Received surf data:', data);
+          console.log('DEBUG: bestSurfTimes type:', typeof data.bestSurfTimes);
+          console.log('DEBUG: bestSurfTimes value:', data.bestSurfTimes);
+          setSurfData(data);
+          setLoading(false);
     } catch (err) {
       setError('Failed to fetch surf data');
       setLoading(false);
@@ -134,11 +129,79 @@ const SurfPage = () => {
       <ResultsSection>
         {loading && <LoadingText>🌊 Fetching surf conditions...</LoadingText>}
         {error && <ErrorText>❌ {error}</ErrorText>}
-        {surfData && (
-          <div>
-            <h3>🏖️ {surfData.beachName}</h3>
-            <p>📅 {surfData.date}</p>
-            <p>{surfData.message}</p>
+                {surfData && (
+                  <div>
+                    <h3>🏖️ {surfData.beachName}</h3>
+                    <p>📅 {surfData.date}</p>
+                    <p style={{ color: '#4CAF50', fontWeight: 'bold', marginBottom: '1rem' }}>
+                      ✅ Real Stormglass API Data
+                    </p>
+            
+            {/* One Sentence Summary */}
+            <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+              <h4>🌊 Summary</h4>
+              <p>{surfData.oneSentenceSummary}</p>
+            </div>
+
+                    {/* Current Conditions */}
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h4>📊 Current Conditions</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                        <div>Wave Height: <strong>{surfData.currentConditions.wave_height}ft</strong></div>
+                        <div>Wave Period: <strong>{surfData.currentConditions.wave_period}s</strong></div>
+                        <div>Wind Speed: <strong>{surfData.currentConditions.wind_speed}mph</strong></div>
+                        <div>Water Temp: <strong>{surfData.currentConditions.water_temperature}°F</strong></div>
+                        <div>Air Temp: <strong>{surfData.currentConditions.air_temperature}°F</strong></div>
+                        <div>Tide: <strong>{surfData.currentConditions.tide}ft</strong></div>
+                      </div>
+                    </div>
+
+                    {/* Best Surf Times */}
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h4>🏄‍♂️ Best Surf Times</h4>
+                      {Array.isArray(surfData.bestSurfTimes) && surfData.bestSurfTimes.length > 0 ? (
+                        surfData.bestSurfTimes.map((time, index) => (
+                          <div key={index} style={{ margin: '0.5rem 0', padding: '0.5rem', background: 'rgba(255,255,255,0.1)', borderRadius: '5px' }}>
+                            <strong>{new Date(time.time).toLocaleTimeString()}</strong> - 
+                            Wave: {time.wave_height}ft - 
+                            Period: {time.wave_period}s - 
+                            Wind: {time.wind_speed}mph - 
+                            Score: {time.score}/50
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ opacity: 0.8, fontStyle: 'italic' }}>
+                          {typeof surfData.bestSurfTimes === 'string' ? surfData.bestSurfTimes : 'No surf time data available'}
+                        </p>
+                      )}
+                    </div>
+
+            {/* AI Analysis */}
+            <div>
+              <h4>🤖 AI Analysis</h4>
+              <div style={{ 
+                marginTop: '1rem', 
+                padding: '1rem', 
+                background: 'rgba(255,255,255,0.1)', 
+                borderRadius: '8px',
+                lineHeight: '1.6'
+              }}>
+                <ReactMarkdown
+                  components={{
+                    h1: ({children}) => <h1 style={{color: '#4A90E2', fontSize: '1.5rem', margin: '1rem 0 0.5rem 0'}}>{children}</h1>,
+                    h2: ({children}) => <h2 style={{color: '#4A90E2', fontSize: '1.3rem', margin: '1rem 0 0.5rem 0'}}>{children}</h2>,
+                    h3: ({children}) => <h3 style={{color: '#4A90E2', fontSize: '1.1rem', margin: '0.8rem 0 0.4rem 0'}}>{children}</h3>,
+                    p: ({children}) => <p style={{margin: '0.5rem 0', color: '#E8F4FD'}}>{children}</p>,
+                    strong: ({children}) => <strong style={{color: '#7BB3F0', fontWeight: 'bold'}}>{children}</strong>,
+                    ul: ({children}) => <ul style={{margin: '0.5rem 0', paddingLeft: '1.5rem', color: '#E8F4FD'}}>{children}</ul>,
+                    li: ({children}) => <li style={{margin: '0.3rem 0', color: '#E8F4FD'}}>{children}</li>,
+                    ol: ({children}) => <ol style={{margin: '0.5rem 0', paddingLeft: '1.5rem', color: '#E8F4FD'}}>{children}</ol>
+                  }}
+                >
+                  {surfData.aiAnalysis}
+                </ReactMarkdown>
+              </div>
+            </div>
           </div>
         )}
         {!loading && !error && !surfData && (
