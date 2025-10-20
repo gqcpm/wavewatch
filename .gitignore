@@ -27,3 +27,13 @@ venv.bak/
 
 # Logs
 *.log
+
+# Node.js / MERN Stack
+src/wavewatch/ui/node_modules/
+src/wavewatch/ui/client/node_modules/
+src/wavewatch/ui/server/node_modules/
+src/wavewatch/ui/.env
+src/wavewatch/ui/.env.local
+src/wavewatch/ui/.env.development.local
+src/wavewatch/ui/.env.test.local
+src/wavewatch/ui/.env.production.local

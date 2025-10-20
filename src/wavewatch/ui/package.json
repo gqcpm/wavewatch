@@ -1,0 +1,20 @@
+{
+    "name": "wavewatch-ui",
+    "version": "1.0.0",
+    "description": "WaveWatch MERN Stack Application",
+    "main": "server/server.js",
+    "scripts": {
+      "dev": "concurrently \"npm run server\" \"npm run client\"",
+      "server": "nodemon server/server.js",
+      "client": "cd client && npm start",
+      "build": "cd client && npm run build",
+      "install-all": "npm install && cd client && npm install && cd ../server && npm install"
+    },
+    "keywords": ["surf", "weather", "mern", "react", "node"],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+      "concurrently": "^8.2.2",
+      "nodemon": "^3.0.2"
+    }
+}
