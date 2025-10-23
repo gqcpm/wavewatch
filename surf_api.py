@@ -97,23 +97,65 @@ async def get_surf_data(beach_name: str, date: str):
         
         print(f"DEBUG: best_surf_times final: {best_surf_times}")
         
-        # Get AI analysis - pass the raw surf data
-        ai_analysis_text = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
-        print(f"DEBUG: AI analysis text: {ai_analysis_text}")
-        
-        # Get one sentence summary - pass the raw surf data
-        one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
-        print(f"DEBUG: One sentence summary: {one_sentence_summary}")
-        
-        # Use raw AI analysis text directly
-        ai_analysis = ai_analysis_text
+        # Check MongoDB cache first for AI responses
+        try:
+            import requests
+            cache_response = requests.get(f"http://localhost:5001/api/surf/{beach_name}/{date}")
+            if cache_response.status_code == 200 and cache_response.json():
+                cached_data = cache_response.json()
+                print("📦 Using cached AI responses from MongoDB")
+                ai_analysis = cached_data.get('ai_analysis', {}).get('text', 'No cached analysis')
+                one_sentence_summary = cached_data.get('one_sentence_summary', 'No cached summary')
+            else:
+                # Generate new AI analysis
+                ai_analysis_text = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
+                print(f"DEBUG: AI analysis text: {ai_analysis_text}")
+                
+                one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
+                print(f"DEBUG: One sentence summary: {one_sentence_summary}")
+                
+                ai_analysis = ai_analysis_text
+                
+                # Cache the response in MongoDB
+                # Extract the actual current conditions from the nested structure
+                current_conditions_data = current_conditions.get('current_conditions', {}) if isinstance(current_conditions, dict) else {}
+                
+                # Extract hourly conditions from the nested structure
+                hourly_conditions_data = hourly_forecast.get('hourly_conditions', []) if isinstance(hourly_forecast, dict) else []
+                
+                cache_data = {
+                    "beach_name": beach_name,
+                    "date": date,
+                    "coordinates": current_conditions.get('coordinates', {}),
+                    "current_conditions": current_conditions_data,
+                    "hourly_conditions": hourly_conditions_data,
+                    "best_surf_times": best_surf_times,
+                    "ai_analysis": {
+                        "text": ai_analysis_text,
+                        "overall_rating": "N/A",
+                        "best_times": "N/A", 
+                        "recommendations": "N/A",
+                        "notable_changes": "N/A"
+                    },
+                    "one_sentence_summary": one_sentence_summary
+                }
+                
+                try:
+                    cache_save_response = requests.post("http://localhost:5001/api/surf", json=cache_data)
+                    if cache_save_response.status_code == 200:
+                        print("💾 Cached AI responses in MongoDB")
+                except Exception as e:
+                    print(f"Warning: Could not cache to MongoDB: {e}")
+                    
+        except Exception as e:
+            print(f"Warning: Could not check MongoDB cache: {e}")
+            # Fallback to generating new AI analysis
+            ai_analysis_text = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
+            ai_analysis = ai_analysis_text
+            one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
         
         # Format response for React frontend
-        # Extract the actual current conditions from the nested structure
-        current_conditions_data = current_conditions.get('current_conditions', {}) if isinstance(current_conditions, dict) else {}
-        
-        # Extract hourly conditions from the nested structure
-        hourly_conditions_data = hourly_forecast.get('hourly_conditions', []) if isinstance(hourly_forecast, dict) else []
+        # Variables already defined above for caching
         
         response = {
             "beachName": beach_name,
