@@ -100,7 +100,7 @@ async def get_surf_data(beach_name: str, date: str):
         # Check MongoDB cache first for AI responses
         try:
             import requests
-            cache_response = requests.get(f"http://localhost:5001/api/surf/{beach_name}/{date}")
+            cache_response = requests.get(f"http://localhost:5001/api/surf/{beach_name}/{date}", timeout=2)
             if cache_response.status_code == 200 and cache_response.json():
                 cached_data = cache_response.json()
                 print("📦 Using cached AI responses from MongoDB")
@@ -117,18 +117,12 @@ async def get_surf_data(beach_name: str, date: str):
                 ai_analysis = ai_analysis_text
                 
                 # Cache the response in MongoDB
-                # Extract the actual current conditions from the nested structure
-                current_conditions_data = current_conditions.get('current_conditions', {}) if isinstance(current_conditions, dict) else {}
-                
-                # Extract hourly conditions from the nested structure
-                hourly_conditions_data = hourly_forecast.get('hourly_conditions', []) if isinstance(hourly_forecast, dict) else []
-                
                 cache_data = {
                     "beach_name": beach_name,
                     "date": date,
                     "coordinates": current_conditions.get('coordinates', {}),
-                    "current_conditions": current_conditions_data,
-                    "hourly_conditions": hourly_conditions_data,
+                    "current_conditions": current_conditions.get('current_conditions', {}),
+                    "hourly_conditions": hourly_forecast.get('hourly_conditions', []),
                     "best_surf_times": best_surf_times,
                     "ai_analysis": {
                         "text": ai_analysis_text,
@@ -145,14 +139,18 @@ async def get_surf_data(beach_name: str, date: str):
                     if cache_save_response.status_code == 200:
                         print("💾 Cached AI responses in MongoDB")
                 except Exception as e:
-                    print(f"Warning: Could not cache to MongoDB: {e}")
-                    
+                    print(f"⚠️ Could not cache in MongoDB: {e}")
         except Exception as e:
             print(f"Warning: Could not check MongoDB cache: {e}")
-            # Fallback to generating new AI analysis
+            # Generate new AI analysis
             ai_analysis_text = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
-            ai_analysis = ai_analysis_text
+            print(f"DEBUG: AI analysis text: {ai_analysis_text}")
+            
             one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
+            print(f"DEBUG: One sentence summary: {one_sentence_summary}")
+            
+            ai_analysis = ai_analysis_text
+        
         
         # Format response for React frontend
         # Variables already defined above for caching
@@ -160,8 +158,8 @@ async def get_surf_data(beach_name: str, date: str):
         response = {
             "beachName": beach_name,
             "date": date,
-            "currentConditions": current_conditions_data,
-            "hourlyForecast": hourly_conditions_data,
+            "currentConditions": current_conditions.get('current_conditions', {}) if isinstance(current_conditions, dict) else {},
+            "hourlyForecast": hourly_forecast,
             "bestSurfTimes": best_surf_times,
             "aiAnalysis": ai_analysis,
             "oneSentenceSummary": one_sentence_summary

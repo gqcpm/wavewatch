@@ -3,8 +3,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from project root
+dotenv.config({ path: '../../../../.env' });
 
 // Import models
 const SurfData = require('./models/SurfData');

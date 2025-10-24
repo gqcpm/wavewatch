@@ -147,12 +147,12 @@ const SurfPage = () => {
                     <div style={{ marginBottom: '2rem' }}>
                       <h4>📊 Current Conditions</h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                        <div>Wave Height: <strong>{surfData.currentConditions.wave_height}ft</strong></div>
-                        <div>Wave Period: <strong>{surfData.currentConditions.wave_period}s</strong></div>
-                        <div>Wind Speed: <strong>{surfData.currentConditions.wind_speed}mph</strong></div>
-                        <div>Water Temp: <strong>{surfData.currentConditions.water_temperature}°F</strong></div>
-                        <div>Air Temp: <strong>{surfData.currentConditions.air_temperature}°F</strong></div>
-                        <div>Tide: <strong>{surfData.currentConditions.tide}ft</strong></div>
+                        <div>Wave Height: <strong>{surfData.currentConditions?.wave_height || 'N/A'}ft</strong></div>
+                        <div>Wave Period: <strong>{surfData.currentConditions?.wave_period || 'N/A'}s</strong></div>
+                        <div>Wind Speed: <strong>{surfData.currentConditions?.wind_speed || 'N/A'}mph</strong></div>
+                        <div>Water Temp: <strong>{surfData.currentConditions?.water_temperature || 'N/A'}°F</strong></div>
+                        <div>Air Temp: <strong>{surfData.currentConditions?.air_temperature || 'N/A'}°F</strong></div>
+                        <div>Tide: <strong>{surfData.currentConditions?.tide || 'N/A'}ft</strong></div>
                       </div>
                     </div>
 
@@ -162,7 +162,7 @@ const SurfPage = () => {
                       {Array.isArray(surfData.bestSurfTimes) && surfData.bestSurfTimes.length > 0 ? (
                         surfData.bestSurfTimes.map((time, index) => (
                           <div key={index} style={{ margin: '0.5rem 0', padding: '0.5rem', background: 'rgba(255,255,255,0.1)', borderRadius: '5px' }}>
-                            <strong>{new Date(time.time).toLocaleTimeString()}</strong> - 
+                            <strong>{new Date(time.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong> - 
                             Wave: {time.wave_height}ft - 
                             Period: {time.wave_period}s - 
                             Wind: {time.wind_speed}mph - 
@@ -198,7 +198,7 @@ const SurfPage = () => {
                     ol: ({children}) => <ol style={{margin: '0.5rem 0', paddingLeft: '1.5rem', color: '#E8F4FD'}}>{children}</ol>
                   }}
                 >
-                  {surfData.aiAnalysis}
+                  {typeof surfData.aiAnalysis === 'string' ? surfData.aiAnalysis : JSON.stringify(surfData.aiAnalysis)}
                 </ReactMarkdown>
               </div>
             </div>

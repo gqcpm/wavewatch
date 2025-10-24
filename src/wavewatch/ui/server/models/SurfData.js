@@ -23,7 +23,7 @@ const surfDataSchema = new mongoose.Schema({
     wind_direction: Number,
     water_temperature: Number,
     air_temperature: Number,
-    tide: Number,
+    tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
     pressure: Number,
     humidity: Number,
     visibility: Number,
@@ -38,7 +38,7 @@ const surfDataSchema = new mongoose.Schema({
     wind_direction: Number,
     water_temperature: Number,
     air_temperature: Number,
-    tide: Number,
+    tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
     pressure: Number,
     humidity: Number,
     visibility: Number,
@@ -51,6 +51,7 @@ const surfDataSchema = new mongoose.Schema({
     wind_speed: Number,
     wind_direction: Number,
     water_temperature: Number,
+    tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
     score: Number
   }],
   ai_analysis: {
