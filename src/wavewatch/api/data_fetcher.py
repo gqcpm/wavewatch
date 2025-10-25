@@ -211,17 +211,7 @@ class StormglassDataFetcher:
                 units='metric',
                 time_zone='gmt'
             )
-            print(f"DEBUG: NOAA data shape: {tide_data.shape if hasattr(tide_data, 'shape') else 'No shape'}")
-            print(f"DEBUG: NOAA data empty: {tide_data.empty if hasattr(tide_data, 'empty') else 'No empty attr'}")
-            
-            if hasattr(tide_data, 'columns'):
-                print(f"DEBUG: NOAA data columns: {list(tide_data.columns)}")
-            if hasattr(tide_data, 'head'):
-                print(f"DEBUG: NOAA data sample:")
-                print(tide_data.head(2))
-            
             if tide_data.empty:
-                print("DEBUG: NOAA data is empty, returning error")
                 return {'error': 'No tide data available for this date'}
             
             # Convert to our format and apply offsets if needed
@@ -257,9 +247,6 @@ class StormglassDataFetcher:
                     'tide': round(tide_ft, 2)
                 })
             
-            print(f"DEBUG: Converted {len(tide_conditions)} tide conditions")
-            if tide_conditions:
-                print(f"DEBUG: Sample tide condition: {tide_conditions[0]}")
             
             return {
                 'tide_conditions': tide_conditions,
@@ -432,22 +419,10 @@ class StormglassDataFetcher:
                 if 'tide_data' in result and 'tide_conditions' in result['tide_data']:
                     # Find matching tide data for this hour
                     hour_time = hour_data.get('time', '')
-                    print(f"DEBUG: Looking for tide data for hour {hour_time}")
-                    print(f"DEBUG: Available tide entries: {len(result['tide_data']['tide_conditions'])}")
                     for tide_entry in result['tide_data']['tide_conditions']:
                         if tide_entry['time'] == hour_time:
                             tide_ft = tide_entry['tide']
-                            print(f"DEBUG: Found matching tide data: {tide_ft}")
                             break
-                    if tide_ft == 'N/A':
-                        print(f"DEBUG: No matching tide data found for {hour_time}")
-                        print(f"DEBUG: Available tide times: {[entry['time'] for entry in result['tide_data']['tide_conditions'][:3]]}")
-                else:
-                    print(f"DEBUG: No NOAA tide data available. Result keys: {list(result.keys())}")
-                    if 'tide_data' in result:
-                        print(f"DEBUG: Tide data keys: {list(result['tide_data'].keys())}")
-                        if 'error' in result['tide_data']:
-                            print(f"DEBUG: NOAA tide data error: {result['tide_data']['error']}")
                 
                 # Fallback to Stormglass data if NOAA data not available
                 if tide_ft == 'N/A':

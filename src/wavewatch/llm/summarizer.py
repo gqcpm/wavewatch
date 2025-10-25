@@ -40,17 +40,8 @@ class SurfSummarizer:
         """
         try:
             if surf_data:
-                # Debug: Check what data structure we're receiving
-                print(f"DEBUG: AI analysis received surf_data keys: {surf_data.keys() if isinstance(surf_data, dict) else 'Not a dict'}")
-                print(f"DEBUG: AI analysis received surf_data type: {type(surf_data)}")
-                if isinstance(surf_data, dict) and 'data' in surf_data:
-                    print(f"DEBUG: AI analysis data.hours length: {len(surf_data['data'].get('hours', []))}")
-                    if surf_data['data'].get('hours'):
-                        print(f"DEBUG: AI analysis first hour sample: {surf_data['data']['hours'][0]}")
-                
                 # Format the surf data for the prompt
                 formatted_data = self._format_surf_data(surf_data)
-                print(f"DEBUG: AI analysis formatted data preview: {formatted_data[:500]}...")
                 prompt = SURF_CONDITIONS_PROMPT.format(
                     surf_beach=surf_beach, 
                     surf_data=formatted_data,
@@ -81,17 +72,8 @@ class SurfSummarizer:
             One-sentence summary of surf conditions
         """
         try:
-            # Debug: Check what data structure we're receiving
-            print(f"DEBUG: AI received surf_data keys: {surf_data.keys() if isinstance(surf_data, dict) else 'Not a dict'}")
-            print(f"DEBUG: AI received surf_data type: {type(surf_data)}")
-            if isinstance(surf_data, dict) and 'data' in surf_data:
-                print(f"DEBUG: AI data.hours length: {len(surf_data['data'].get('hours', []))}")
-                if surf_data['data'].get('hours'):
-                    print(f"DEBUG: AI first hour sample: {surf_data['data']['hours'][0]}")
-            
             # Format the surf data for the prompt
             formatted_data = self._format_surf_data(surf_data)
-            print(f"DEBUG: AI formatted data preview: {formatted_data[:500]}...")
             
             prompt = ONE_SENTENCE_SUMMARY_PROMPT.format(
                 beach_name=beach_name,

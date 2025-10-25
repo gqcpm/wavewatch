@@ -54,65 +54,116 @@ async def get_surf_data(beach_name: str, date: str):
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
         
-        # Fetch surf data using existing data fetcher
-        surf_data_result = data_fetcher.fetch_surf_data(beach_name, date)
+        # Initialize variables for data
+        current_conditions = {}
+        hourly_forecast = []
+        best_surf_times = []
+        surf_data_for_ai = {}
         
-        # Debug: Check what surf_data contains
-        print(f"DEBUG: surf_data_result type: {type(surf_data_result)}")
-        print(f"DEBUG: surf_data_result keys: {surf_data_result.keys() if isinstance(surf_data_result, dict) else 'Not a dict'}")
+        # Check MongoDB cache first for Stormglass data
+        stormglass_cached = False
+        try:
+            import requests
+            stormglass_response = requests.get(f"http://localhost:5001/api/stormglass/{beach_name}/{date}", timeout=2)
+            if stormglass_response.status_code == 200 and stormglass_response.json():
+                cached_stormglass = stormglass_response.json()
+                print("📦 Using cached Stormglass data from MongoDB")
+                stormglass_cached = True
+                # Use cached data instead of making API calls
+                hourly_forecast = cached_stormglass.get('hourly_forecast', [])
+                best_surf_times = cached_stormglass.get('best_surf_times', [])
+                
+                # Extract current conditions from the first hour of hourly_forecast
+                if hourly_forecast and len(hourly_forecast) > 0:
+                    first_hour = hourly_forecast[0]
+                    current_conditions = {
+                        'wave_height': first_hour.get('wave_height', 'N/A'),
+                        'wave_period': first_hour.get('wave_period', 'N/A'),
+                        'wind_speed': first_hour.get('wind_speed', 'N/A'),
+                        'water_temperature': first_hour.get('water_temperature', 'N/A'),
+                        'air_temperature': first_hour.get('air_temperature', 'N/A'),
+                        'tide': first_hour.get('tide', 'N/A')
+                    }
+                else:
+                    current_conditions = {}
+                
+                # For AI analysis, we still need to fetch the raw data
+                surf_data_result = data_fetcher.fetch_surf_data(beach_name, target_date=date)
+                if 'error' not in surf_data_result:
+                    surf_data_for_ai = surf_data_result.get('data', {})
+        except Exception as e:
+            print(f"Warning: Could not check Stormglass cache: {e}")
         
-        if isinstance(surf_data_result, str):
-            raise HTTPException(status_code=404, detail=surf_data_result)
-        
-        if 'error' in surf_data_result:
-            raise HTTPException(status_code=404, detail=surf_data_result['error'])
-        
-        # Extract the actual surf data for AI analysis
-        surf_data_for_ai = surf_data_result.get('data', {})
-        
-        # Get current conditions
-        current_conditions = data_fetcher.get_current_conditions(beach_name, date)
-        print(f"DEBUG: current_conditions type: {type(current_conditions)}")
-        print(f"DEBUG: current_conditions content: {current_conditions}")
-        if isinstance(current_conditions, str):
-            current_conditions = {"error": current_conditions}
-        
-        # Get hourly forecast
-        hourly_forecast = data_fetcher.get_hourly_conditions(beach_name, date)
-        print(f"DEBUG: hourly_forecast type: {type(hourly_forecast)}")
-        print(f"DEBUG: hourly_forecast length: {len(hourly_forecast) if isinstance(hourly_forecast, (list, dict)) else 'Not list/dict'}")
-        if isinstance(hourly_forecast, str):
-            hourly_forecast = []
-        
-        # Get best surf times
-        best_surf_times_result = data_fetcher.get_best_surf_times(beach_name, date)
-        print(f"DEBUG: best_surf_times_result type: {type(best_surf_times_result)}")
-        print(f"DEBUG: best_surf_times_result content: {best_surf_times_result}")
-        if isinstance(best_surf_times_result, str):
-            best_surf_times = []
-        elif 'error' in best_surf_times_result:
-            best_surf_times = []
-        else:
+        # If no cached data, fetch fresh data from Stormglass API
+        if not stormglass_cached:
+            print("🌊 Fetching fresh data from Stormglass API")
+            # Get current conditions
+            current_conditions_result = data_fetcher.get_current_conditions(beach_name, target_date=date)
+            # Get hourly forecast
+            hourly_forecast_result = data_fetcher.get_hourly_conditions(beach_name, target_date=date)
+            # Get best surf times
+            best_surf_times_result = data_fetcher.get_best_surf_times(beach_name, target_date=date)
+            
+            # Extract the data from results
+            current_conditions = current_conditions_result.get('current_conditions', {})
+            hourly_forecast = hourly_forecast_result.get('hourly_conditions', [])
             best_surf_times = best_surf_times_result.get('best_times', [])
+            
+            # Get surf data for AI analysis
+            surf_data_result = data_fetcher.fetch_surf_data(beach_name, target_date=date)
+            if 'error' not in surf_data_result:
+                surf_data_for_ai = surf_data_result.get('data', {})
+            
+            # Cache the Stormglass data
+            try:
+                # Extract current conditions from the first hour for caching
+                current_conditions_for_cache = {}
+                if hourly_forecast and len(hourly_forecast) > 0:
+                    first_hour = hourly_forecast[0]
+                    current_conditions_for_cache = {
+                        'wave_height': first_hour.get('wave_height', 'N/A'),
+                        'wave_period': first_hour.get('wave_period', 'N/A'),
+                        'wind_speed': first_hour.get('wind_speed', 'N/A'),
+                        'water_temperature': first_hour.get('water_temperature', 'N/A'),
+                        'air_temperature': first_hour.get('air_temperature', 'N/A'),
+                        'tide': first_hour.get('tide', 'N/A')
+                    }
+                
+                stormglass_cache_data = {
+                    "beach_name": beach_name,
+                    "date": date,
+                    "current_conditions": current_conditions_for_cache,
+                    "hourly_forecast": hourly_forecast,
+                    "best_surf_times": best_surf_times
+                }
+                cache_save_response = requests.post("http://localhost:5001/api/stormglass", json=stormglass_cache_data)
+                if cache_save_response.status_code == 200:
+                    print("💾 Cached Stormglass data in MongoDB")
+            except Exception as e:
+                print(f"Warning: Could not cache Stormglass data: {e}")
         
-        print(f"DEBUG: best_surf_times final: {best_surf_times}")
-        
-        # Check MongoDB cache first for AI responses
+        # Check MongoDB cache for AI responses
         try:
             import requests
             cache_response = requests.get(f"http://localhost:5001/api/surf/{beach_name}/{date}", timeout=2)
             if cache_response.status_code == 200 and cache_response.json():
                 cached_data = cache_response.json()
-                print("📦 Using cached AI responses from MongoDB")
-                ai_analysis = cached_data.get('ai_analysis', {}).get('text', 'No cached analysis')
-                one_sentence_summary = cached_data.get('one_sentence_summary', 'No cached summary')
+                print(f"DEBUG: Cache response type: {type(cached_data)}")
+                print(f"DEBUG: Cache response is array: {isinstance(cached_data, list)}")
+                print(f"DEBUG: Cache response keys: {cached_data.keys() if isinstance(cached_data, dict) else 'Not a dict'}")
+                
+                # Check if cached_data is a dict, not a list
+                if isinstance(cached_data, dict):
+                    print("📦 Using cached AI responses from MongoDB")
+                    ai_analysis = cached_data.get('ai_analysis', {}).get('text', 'No cached analysis')
+                    one_sentence_summary = cached_data.get('one_sentence_summary', 'No cached summary')
+                else:
+                    print(f"Warning: Unexpected cache data type: {type(cached_data)}")
+                    raise Exception(f"Cache data is not a dictionary: {type(cached_data)}")
             else:
                 # Generate new AI analysis
                 ai_analysis_text = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
-                print(f"DEBUG: AI analysis text: {ai_analysis_text}")
-                
                 one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
-                print(f"DEBUG: One sentence summary: {one_sentence_summary}")
                 
                 ai_analysis = ai_analysis_text
                 
@@ -120,9 +171,8 @@ async def get_surf_data(beach_name: str, date: str):
                 cache_data = {
                     "beach_name": beach_name,
                     "date": date,
-                    "coordinates": current_conditions.get('coordinates', {}),
-                    "current_conditions": current_conditions.get('current_conditions', {}),
-                    "hourly_conditions": hourly_forecast.get('hourly_conditions', []),
+                    "current_conditions": current_conditions,
+                    "hourly_forecast": hourly_forecast,
                     "best_surf_times": best_surf_times,
                     "ai_analysis": {
                         "text": ai_analysis_text,
@@ -144,10 +194,7 @@ async def get_surf_data(beach_name: str, date: str):
             print(f"Warning: Could not check MongoDB cache: {e}")
             # Generate new AI analysis
             ai_analysis_text = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
-            print(f"DEBUG: AI analysis text: {ai_analysis_text}")
-            
             one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
-            print(f"DEBUG: One sentence summary: {one_sentence_summary}")
             
             ai_analysis = ai_analysis_text
         
@@ -158,16 +205,13 @@ async def get_surf_data(beach_name: str, date: str):
         response = {
             "beachName": beach_name,
             "date": date,
-            "currentConditions": current_conditions.get('current_conditions', {}) if isinstance(current_conditions, dict) else {},
+            "currentConditions": current_conditions if isinstance(current_conditions, dict) else {},
             "hourlyForecast": hourly_forecast,
             "bestSurfTimes": best_surf_times,
             "aiAnalysis": ai_analysis,
             "oneSentenceSummary": one_sentence_summary
         }
         
-        print(f"DEBUG: Final response keys: {response.keys()}")
-        print(f"DEBUG: currentConditions keys: {current_conditions.keys() if isinstance(current_conditions, dict) else 'Not dict'}")
-        print(f"DEBUG: bestSurfTimes length: {len(best_surf_times) if isinstance(best_surf_times, list) else 'Not list'}")
         
         return response
         

@@ -93,9 +93,6 @@ const SurfPage = () => {
     
     try {
           const data = await surfApi.getSurfData(beachName, selectedDate);
-          console.log('DEBUG: Received surf data:', data);
-          console.log('DEBUG: bestSurfTimes type:', typeof data.bestSurfTimes);
-          console.log('DEBUG: bestSurfTimes value:', data.bestSurfTimes);
           setSurfData(data);
           setLoading(false);
     } catch (err) {
