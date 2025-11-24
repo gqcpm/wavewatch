@@ -14,6 +14,7 @@ export const theme = {
       secondary: '#657786',
       muted: '#AAB8C2',
       white: '#FFFFFF',
+      rating: '#FFFFFF',          // White text for rating cards
     },
     
     background: {
@@ -42,6 +43,24 @@ export const theme = {
       light: '#E1E8ED',
       medium: '#AAB8C2',
       dark: '#657786',
+    },
+    
+    // Rating color scale (0-100) - Red to Green gradient
+    rating: {
+      dangerous: '#B71C1C',      // Deep Red (0-20)
+      poor: '#D84315',            // Orange-Brown (21-40)
+      fair: '#FFD740',            // Amber/Gold (41-60)
+      good: '#8BC34A',            // Olive Green (61-80)
+      optimal: '#2E7D32',         // Forest Green (81-100)
+      unknown: '#6B7280',         // Gray for unknown
+      unknownDark: '#4B5563',     // Darker gray for gradients
+    },
+    
+    // Condition quality colors (matching rating scale)
+    condition: {
+      excellent: '#8BC34A',      // Olive Green - Good/Favorable
+      moderate: '#FFD740',       // Amber/Gold - Fair/Moderate
+      poor: '#D84315',            // Orange-Brown - Poor/Rough
     }
   },
   
