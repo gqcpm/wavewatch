@@ -636,6 +636,7 @@ class StormglassDataFetcher:
         Returns:
             Dictionary with current conditions
         """
+        current_hour_index = datetime.now().hour
         result = self.fetch_surf_data(beach_name, lat, lng, target_date)
         
         if 'error' in result:
@@ -643,8 +644,11 @@ class StormglassDataFetcher:
         
         try:
             data = result['data']
-            current_hour = data['hours'][0]  # Get current hour data
-            
+            try:
+                current_hour = data['hours'][current_hour_index]
+            except IndexError:
+                current_hour = data['hours'][0] # Default to first hour (00:00) if index is out of range
+
             # Convert units from metric to imperial
             wave_height_m = current_hour.get('waveHeight', {}).get('noaa', 'N/A')
             wave_height_ft = round(float(wave_height_m) * 3.28084, 1) if wave_height_m != 'N/A' else 'N/A'
