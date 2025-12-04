@@ -15,6 +15,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 env.bak/
 venv.bak/
@@ -29,6 +30,7 @@ venv.bak/
 *.log
 
 # Node.js / MERN Stack
+node_modules/
 src/wavewatch/ui/node_modules/
 src/wavewatch/ui/client/node_modules/
 src/wavewatch/ui/server/node_modules/

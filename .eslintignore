@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+*.min.js
+
+# Cache
+.cache/
+
+# Config files
+*.config.js
+
+# Python (if any JS files in Python dirs)
+__pycache__/
+.venv/
+venv/
+

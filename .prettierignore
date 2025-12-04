@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+build/
+dist/
+*.min.js
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Other
+*.log
+.DS_Store
+
