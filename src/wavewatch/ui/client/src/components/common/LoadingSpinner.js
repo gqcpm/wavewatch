@@ -16,9 +16,11 @@ const SpinnerIcon = styled.div`
   border-top-color: ${theme.colors.primary};
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  
+
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;
 
@@ -39,4 +41,3 @@ const LoadingSpinner = ({ message = 'Loading...' }) => {
 };
 
 export default LoadingSpinner;
-

@@ -13,16 +13,18 @@ const StyledButton = styled.button`
     if (props.variant === 'secondary') return theme.colors.background.secondary;
     return theme.colors.background.secondary;
   }};
-  color: ${props => props.variant === 'primary' ? theme.colors.white : theme.colors.text.primary};
-  border: ${props => props.variant === 'outline' ? `1px solid ${theme.colors.border.medium}` : 'none'};
+  color: ${props =>
+    props.variant === 'primary' ? theme.colors.white : theme.colors.text.primary};
+  border: ${props =>
+    props.variant === 'outline' ? `1px solid ${theme.colors.border.medium}` : 'none'};
   border-radius: ${theme.borderRadius.md};
   cursor: pointer;
   font-weight: ${theme.typography.fontWeight.semibold};
   font-size: ${theme.typography.fontSize.base};
   font-family: ${theme.typography.fontFamily};
   transition: all 0.2s ease;
-  box-shadow: ${props => props.variant === 'primary' ? theme.shadows.sm : 'none'};
-  
+  box-shadow: ${props => (props.variant === 'primary' ? theme.shadows.sm : 'none')};
+
   &:hover:not(:disabled) {
     background: ${props => {
       if (props.variant === 'primary') return theme.colors.secondary;
@@ -30,13 +32,14 @@ const StyledButton = styled.button`
       return theme.colors.background.tertiary;
     }};
     transform: translateY(-1px);
-    box-shadow: ${props => props.variant === 'primary' ? theme.shadows.md : theme.shadows.sm};
+    box-shadow: ${props =>
+      props.variant === 'primary' ? theme.shadows.md : theme.shadows.sm};
   }
-  
+
   &:active:not(:disabled) {
     transform: translateY(0);
   }
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -53,4 +56,3 @@ const Button = ({ children, variant = 'primary', size = 'medium', ...props }) =>
 };
 
 export default Button;
-

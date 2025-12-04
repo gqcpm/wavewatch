@@ -14,12 +14,7 @@ const ErrorContainer = styled.div`
 `;
 
 const ErrorMessage = ({ message, children }) => {
-  return (
-    <ErrorContainer>
-      {children || (message && message)}
-    </ErrorContainer>
-  );
+  return <ErrorContainer>{children || (message && message)}</ErrorContainer>;
 };
 
 export default ErrorMessage;
-

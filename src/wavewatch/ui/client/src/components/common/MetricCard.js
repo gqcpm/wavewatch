@@ -12,20 +12,21 @@ const MetricContainer = styled.div`
   gap: ${theme.spacing.xs};
   transition: all 0.2s ease;
   position: relative;
-  
+
   /* Subtle background highlight */
-  ${props => props.borderColor && `
+  ${props =>
+    props.borderColor &&
+    `
     background: linear-gradient(to bottom, 
       ${props.borderColor}08 0%, 
       ${theme.colors.background.primary} 100%
     );
   `}
-  
+
   &:hover {
     border-color: ${props => props.borderColor || theme.colors.border.medium};
-    box-shadow: ${props => props.borderColor 
-      ? `0 2px 8px ${props.borderColor}20` 
-      : theme.shadows.sm};
+    box-shadow: ${props =>
+      props.borderColor ? `0 2px 8px ${props.borderColor}20` : theme.shadows.sm};
     transform: translateY(-1px);
   }
 `;
@@ -39,7 +40,10 @@ const MetricLabel = styled.div`
 `;
 
 const MetricValue = styled.div`
-  font-size: ${props => props.size === 'large' ? theme.typography.fontSize['2xl'] : theme.typography.fontSize.xl};
+  font-size: ${props =>
+    props.size === 'large'
+      ? theme.typography.fontSize['2xl']
+      : theme.typography.fontSize.xl};
   color: ${theme.colors.text.primary};
   font-weight: ${theme.typography.fontWeight.bold};
   line-height: 1.2;
@@ -65,4 +69,3 @@ const MetricCard = ({ label, value, unit, size = 'medium', borderColor, ...props
 };
 
 export default MetricCard;
-

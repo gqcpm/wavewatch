@@ -5,15 +5,15 @@ const surfDataSchema = new mongoose.Schema({
     type: String,
     required: true,
     lowercase: true,
-    trim: true
+    trim: true,
   },
   date: {
     type: String,
-    required: true
+    required: true,
   },
   coordinates: {
     lat: Number,
-    lng: Number
+    lng: Number,
   },
   current_conditions: {
     wave_height: Number,
@@ -27,55 +27,59 @@ const surfDataSchema = new mongoose.Schema({
     pressure: Number,
     humidity: Number,
     visibility: Number,
-    cloud_cover: Number
+    cloud_cover: Number,
   },
-  hourly_conditions: [{
-    time: String,
-    wave_height: Number,
-    wave_period: Number,
-    wave_direction: Number,
-    wind_speed: Number,
-    wind_direction: Number,
-    water_temperature: Number,
-    air_temperature: Number,
-    tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
-    pressure: Number,
-    humidity: Number,
-    visibility: Number,
-    cloud_cover: Number
-  }],
-  best_surf_times: [{
-    time: String,
-    wave_height: Number,
-    wave_period: Number,
-    wind_speed: Number,
-    wind_direction: Number,
-    water_temperature: Number,
-    tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
-    score: Number
-  }],
+  hourly_conditions: [
+    {
+      time: String,
+      wave_height: Number,
+      wave_period: Number,
+      wave_direction: Number,
+      wind_speed: Number,
+      wind_direction: Number,
+      water_temperature: Number,
+      air_temperature: Number,
+      tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
+      pressure: Number,
+      humidity: Number,
+      visibility: Number,
+      cloud_cover: Number,
+    },
+  ],
+  best_surf_times: [
+    {
+      time: String,
+      wave_height: Number,
+      wave_period: Number,
+      wind_speed: Number,
+      wind_direction: Number,
+      water_temperature: Number,
+      tide: { type: mongoose.Schema.Types.Mixed }, // Allow Number or String
+      score: Number,
+    },
+  ],
   ai_analysis: {
     text: String,
     overall_rating: String,
     best_times: String,
     recommendations: String,
-    notable_changes: String
+    notable_changes: String,
   },
   one_sentence_summary: String,
   cached: {
     type: Boolean,
-    default: true
+    default: true,
   },
   created_at: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   expires_at: {
     type: Date,
-    default: function() {
+    default: function () {
       return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-    }
-  }
+    },
+  },
 });
 
 // Index for efficient queries

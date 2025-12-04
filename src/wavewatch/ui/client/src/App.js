@@ -9,7 +9,7 @@ import RegisterPage from './pages/RegisterPage';
 
 const AppContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(180deg, #E8F4F8 0%, #F5F7FA 50%, #FFFFFF 100%);
+  background: linear-gradient(180deg, #e8f4f8 0%, #f5f7fa 50%, #ffffff 100%);
   background-attachment: fixed;
 `;
 

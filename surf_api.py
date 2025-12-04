@@ -11,7 +11,7 @@ import sys
 import os
 
 # Add the src directory to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from wavewatch.api.data_fetcher import StormglassDataFetcher
 from wavewatch.llm.summarizer import SurfSummarizer
@@ -37,9 +37,11 @@ app.add_middleware(
 data_fetcher = StormglassDataFetcher()
 summarizer = SurfSummarizer()
 
+
 @app.get("/")
 async def root():
     return {"message": "🌊 WaveWatch API is running!", "version": "1.0.0"}
+
 
 @app.get("/api/surf/{beach_name}/{date}")
 async def get_surf_data(beach_name: str, date: str):
@@ -49,80 +51,111 @@ async def get_surf_data(beach_name: str, date: str):
     try:
         # Validate date format
         try:
-            datetime.strptime(date, '%Y-%m-%d')
+            datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-        
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
+            )
+
         # Check MongoDB cache first for complete response (industry standard: cache the full resource)
         import requests
+
         try:
-            cache_response = requests.get(f"http://localhost:5001/api/surf/{beach_name}/{date}", timeout=2)
+            cache_response = requests.get(
+                f"http://localhost:5001/api/surf/{beach_name}/{date}", timeout=2
+            )
             if cache_response.status_code == 200:
                 cached_data = cache_response.json()
                 if cached_data and isinstance(cached_data, dict):
                     print("📦 Using cached complete response from MongoDB")
-                    
+
                     # Get tide data (not cached, fetch fresh as it's separate data source)
                     tide_data = {}
                     try:
-                        tide_data = data_fetcher._get_noaa_tide_data(beach_name, target_date=date)
-                        if 'error' in tide_data:
+                        tide_data = data_fetcher._get_noaa_tide_data(
+                            beach_name, target_date=date
+                        )
+                        if "error" in tide_data:
                             tide_data = {}
                     except Exception as e:
                         tide_data = {}
-                    
+
                     # Format response from cache
-                    ai_analysis_dict = cached_data.get('ai_analysis', {})
-                    ai_analysis = ai_analysis_dict.get('text', '') if isinstance(ai_analysis_dict, dict) else cached_data.get('ai_analysis', '')
-                    
+                    ai_analysis_dict = cached_data.get("ai_analysis", {})
+                    ai_analysis = (
+                        ai_analysis_dict.get("text", "")
+                        if isinstance(ai_analysis_dict, dict)
+                        else cached_data.get("ai_analysis", "")
+                    )
+
                     # Parse best times from cached AI analysis
-                    best_surf_times = summarizer.parse_best_times_from_analysis(ai_analysis) if ai_analysis else []
-                    
+                    best_surf_times = (
+                        summarizer.parse_best_times_from_analysis(ai_analysis)
+                        if ai_analysis
+                        else []
+                    )
+
                     # Handle both hourly_forecast (legacy) and hourly_conditions (schema) field names
-                    hourly_forecast = cached_data.get('hourly_conditions') or cached_data.get('hourly_forecast', [])
-                    
+                    hourly_forecast = cached_data.get(
+                        "hourly_conditions"
+                    ) or cached_data.get("hourly_forecast", [])
+
                     return {
                         "beachName": beach_name,
                         "date": date,
-                        "currentConditions": cached_data.get('current_conditions', {}),
+                        "currentConditions": cached_data.get("current_conditions", {}),
                         "hourlyForecast": hourly_forecast,
                         "bestSurfTimes": best_surf_times,
-                        "breakSpecificConditions": cached_data.get('break_specific_conditions', ''),
+                        "breakSpecificConditions": cached_data.get(
+                            "break_specific_conditions", ""
+                        ),
                         "aiAnalysis": ai_analysis,
-                        "oneSentenceSummary": cached_data.get('one_sentence_summary', ''),
-                        "tideData": tide_data
+                        "oneSentenceSummary": cached_data.get(
+                            "one_sentence_summary", ""
+                        ),
+                        "tideData": tide_data,
                     }
         except Exception as e:
             print(f"Warning: Could not check MongoDB cache: {e}")
-        
+
         # Cache miss - fetch fresh data and generate AI analysis
         print("🌊 Fetching fresh data from Stormglass API")
-        
+
         # Get current conditions and hourly forecast
-        current_conditions_result = data_fetcher.get_current_conditions(beach_name, target_date=date)
-        hourly_forecast_result = data_fetcher.get_hourly_conditions(beach_name, target_date=date)
-        
-        current_conditions = current_conditions_result.get('current_conditions', {})
-        hourly_forecast = hourly_forecast_result.get('hourly_conditions', [])
-        
+        current_conditions_result = data_fetcher.get_current_conditions(
+            beach_name, target_date=date
+        )
+        hourly_forecast_result = data_fetcher.get_hourly_conditions(
+            beach_name, target_date=date
+        )
+
+        current_conditions = current_conditions_result.get("current_conditions", {})
+        hourly_forecast = hourly_forecast_result.get("hourly_conditions", [])
+
         # Get surf data for AI analysis
         surf_data_result = data_fetcher.fetch_surf_data(beach_name, target_date=date)
-        surf_data_for_ai = surf_data_result.get('data', {}) if 'error' not in surf_data_result else {}
-        
+        surf_data_for_ai = (
+            surf_data_result.get("data", {}) if "error" not in surf_data_result else {}
+        )
+
         # Generate AI analysis
-        ai_analysis_text, break_specific_conditions = summarizer.get_surf_conditions(beach_name, surf_data_for_ai, date)
-        one_sentence_summary = summarizer.get_one_sentence_summary(beach_name, surf_data_for_ai, date)
+        ai_analysis_text, break_specific_conditions = summarizer.get_surf_conditions(
+            beach_name, surf_data_for_ai, date
+        )
+        one_sentence_summary = summarizer.get_one_sentence_summary(
+            beach_name, surf_data_for_ai, date
+        )
         best_surf_times = summarizer.parse_best_times_from_analysis(ai_analysis_text)
-        
+
         # Get tide data
         tide_data = {}
         try:
             tide_data = data_fetcher._get_noaa_tide_data(beach_name, target_date=date)
-            if 'error' in tide_data:
+            if "error" in tide_data:
                 tide_data = {}
         except Exception as e:
             tide_data = {}
-        
+
         # Cache complete response in MongoDB (using schema field names)
         cache_data = {
             "beach_name": beach_name,
@@ -136,45 +169,48 @@ async def get_surf_data(beach_name: str, date: str):
                 "overall_rating": "N/A",
                 "best_times": "N/A",
                 "recommendations": "N/A",
-                "notable_changes": "N/A"
+                "notable_changes": "N/A",
             },
-            "one_sentence_summary": one_sentence_summary
+            "one_sentence_summary": one_sentence_summary,
         }
-        
+
         try:
-            cache_save_response = requests.post("http://localhost:5001/api/surf", json=cache_data, timeout=2)
+            cache_save_response = requests.post(
+                "http://localhost:5001/api/surf", json=cache_data, timeout=2
+            )
             if cache_save_response.status_code == 200:
                 print("💾 Cached complete response in MongoDB")
         except Exception as e:
             print(f"⚠️ Could not cache in MongoDB: {e}")
-        
+
         # Return response
         return {
             "beachName": beach_name,
             "date": date,
-            "currentConditions": current_conditions if isinstance(current_conditions, dict) else {},
+            "currentConditions": (
+                current_conditions if isinstance(current_conditions, dict) else {}
+            ),
             "hourlyForecast": hourly_forecast,
             "bestSurfTimes": best_surf_times,
             "breakSpecificConditions": break_specific_conditions,
             "aiAnalysis": ai_analysis_text,
             "oneSentenceSummary": one_sentence_summary,
-            "tideData": tide_data
+            "tideData": tide_data,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error fetching surf data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+
 @app.get("/api/beaches")
 async def get_available_beaches():
     """
     Get list of available beaches
     """
-    return {
-        "beaches": list(data_fetcher.beach_coordinates.keys())
-    }
+    return {"beaches": list(data_fetcher.beach_coordinates.keys())}
 
 
 @app.get("/health")
@@ -184,10 +220,11 @@ async def health_check():
     """
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+
 if __name__ == "__main__":
     print("🌊 Starting WaveWatch API server...")
     print("📡 API will be available at: http://localhost:8001")
     print("📚 API docs available at: http://localhost:8001/docs")
     print("🔗 React frontend should connect to: http://localhost:8001")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8001)

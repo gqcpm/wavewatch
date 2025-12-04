@@ -23,7 +23,7 @@ const Title = styled.h1`
   font-family: ${theme.typography.fontFamily};
   color: ${theme.colors.text.primary};
   line-height: 1.2;
-  
+
   @media (max-width: ${theme.breakpoints.mobile}) {
     font-size: ${theme.typography.fontSize['3xl']};
   }
@@ -58,7 +58,7 @@ const FeatureCard = styled.div`
   border: 1px solid ${theme.colors.border.light};
   box-shadow: ${theme.shadows.md};
   transition: all 0.2s ease;
-  
+
   &:hover {
     box-shadow: ${theme.shadows.lg};
     transform: translateY(-2px);
@@ -91,40 +91,40 @@ const HomePage = () => {
       <Hero>
         <Title>WaveWatch</Title>
         <Subtitle>
-          Professional surf forecasting powered by real-time data and AI analysis. 
-          Get accurate wave conditions, wind forecasts, and personalized recommendations 
-          for your next surf session.
+          Professional surf forecasting powered by real-time data and AI analysis. Get
+          accurate wave conditions, wind forecasts, and personalized recommendations for
+          your next surf session.
         </Subtitle>
         <CTAButton as={Link} to="/surf" variant="primary" size="large">
           Check Surf Forecast
         </CTAButton>
       </Hero>
-      
+
       <Features>
         <FeatureCard>
           <FeatureIcon>📊</FeatureIcon>
           <FeatureTitle>Real-Time Data</FeatureTitle>
           <FeatureText>
-            Get accurate wave height, wind conditions, and tide information 
-            from trusted sources like Stormglass and NOAA.
+            Get accurate wave height, wind conditions, and tide information from trusted
+            sources like Stormglass and NOAA.
           </FeatureText>
         </FeatureCard>
-        
+
         <FeatureCard>
           <FeatureIcon>🤖</FeatureIcon>
           <FeatureTitle>AI Analysis</FeatureTitle>
           <FeatureText>
-            Powered by Google Gemini AI to provide intelligent surf condition 
-            analysis and personalized recommendations.
+            Powered by Google Gemini AI to provide intelligent surf condition analysis
+            and personalized recommendations.
           </FeatureText>
         </FeatureCard>
-        
+
         <FeatureCard>
           <FeatureIcon>📈</FeatureIcon>
           <FeatureTitle>Detailed Forecasts</FeatureTitle>
           <FeatureText>
-            Visualize surf conditions throughout the day with interactive charts 
-            and hourly forecasts for optimal planning.
+            Visualize surf conditions throughout the day with interactive charts and
+            hourly forecasts for optimal planning.
           </FeatureText>
         </FeatureCard>
       </Features>

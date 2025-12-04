@@ -5,11 +5,11 @@ import { theme } from '../styles/theme';
  * @param {number|string} waveHeight - Wave height in feet
  * @returns {string|null} - Hex color code or null
  */
-export const getWaveHeightColor = (waveHeight) => {
+export const getWaveHeightColor = waveHeight => {
   if (!waveHeight || waveHeight === 'N/A') return null;
-  
+
   const height = parseFloat(waveHeight);
-  
+
   if (height >= 2 && height <= 8) {
     return theme.colors.condition.excellent; // Good/Favorable - Olive Green
   }
@@ -27,11 +27,11 @@ export const getWaveHeightColor = (waveHeight) => {
  * @param {number|string} period - Wave period in seconds
  * @returns {string|null} - Hex color code or null
  */
-export const getWavePeriodColor = (period) => {
+export const getWavePeriodColor = period => {
   if (!period || period === 'N/A') return null;
-  
+
   const p = parseFloat(period);
-  
+
   if (p >= 12) {
     return theme.colors.condition.excellent; // Good/Favorable - Long period, clean waves
   }
@@ -46,11 +46,11 @@ export const getWavePeriodColor = (period) => {
  * @param {number|string} windSpeed - Wind speed in mph
  * @returns {string|null} - Hex color code or null
  */
-export const getWindSpeedColor = (windSpeed) => {
+export const getWindSpeedColor = windSpeed => {
   if (!windSpeed || windSpeed === 'N/A') return null;
-  
+
   const speed = parseFloat(windSpeed);
-  
+
   if (speed < 10) {
     return theme.colors.condition.excellent; // Good/Favorable - Light winds
   }
@@ -85,9 +85,9 @@ export const getWindDirectionColor = (windDirection, windSpeed) => {
  */
 export const getTemperatureColor = (temp, type = 'water') => {
   if (!temp || temp === 'N/A') return null;
-  
+
   const t = parseFloat(temp);
-  
+
   if (type === 'water') {
     // Comfortable water temp: 60-75°F
     if (t >= 60 && t <= 75) {
@@ -114,4 +114,3 @@ export const getTemperatureColor = (temp, type = 'water') => {
     return null; // Neutral for extreme temps
   }
 };
-

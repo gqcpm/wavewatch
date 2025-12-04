@@ -30,7 +30,7 @@ const Logo = styled(Link)`
   align-items: center;
   gap: ${theme.spacing.xs};
   font-family: ${theme.typography.fontFamily};
-  
+
   &:hover {
     color: ${theme.colors.secondary};
   }
@@ -54,7 +54,7 @@ const NavLink = styled(Link)`
   transition: all 0.2s ease;
   font-weight: ${theme.typography.fontWeight.medium};
   font-size: ${theme.typography.fontSize.base};
-  
+
   &:hover {
     background-color: ${theme.colors.background.secondary};
     color: ${theme.colors.primary};
@@ -81,5 +81,3 @@ const Header = () => {
 };
 
 export default Header;
-
-

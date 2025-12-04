@@ -5,6 +5,7 @@ A modern surf forecasting application built with MongoDB, Express.js, React, and
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - MongoDB (local or MongoDB Atlas)
 - npm or yarn
@@ -12,11 +13,13 @@ A modern surf forecasting application built with MongoDB, Express.js, React, and
 ### Installation
 
 1. **Install all dependencies:**
+
    ```bash
    npm run install-all
    ```
 
 2. **Set up environment variables:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your actual API keys and MongoDB URI
@@ -70,6 +73,7 @@ ui/
 ## 🌊 API Endpoints
 
 ### Surf Data
+
 - `GET /api/surf/:beachName/:date` - Get surf data for specific beach and date
 - `GET /api/surf/:beachName` - Get all surf data for a beach
 - `POST /api/surf` - Create new surf data
@@ -77,6 +81,7 @@ ui/
 - `DELETE /api/surf/:id` - Delete surf data
 
 ### Authentication
+
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login user
 - `GET /api/auth/profile` - Get user profile

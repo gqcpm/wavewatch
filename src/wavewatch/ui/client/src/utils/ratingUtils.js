@@ -5,11 +5,11 @@ import { theme } from '../styles/theme';
  * @param {string|object} aiAnalysis - The AI analysis text or object
  * @returns {number|null} - The rating value or null if not found
  */
-export const extractOverallRating = (aiAnalysis) => {
+export const extractOverallRating = aiAnalysis => {
   if (!aiAnalysis) return null;
-  
+
   const text = typeof aiAnalysis === 'string' ? aiAnalysis : JSON.stringify(aiAnalysis);
-  
+
   // Look for patterns like:
   // "Overall Surf Rating: 88/100" or "Overall Surf Rating:** 88/100"
   // "Rating: 88/100" or "88/100"
@@ -18,7 +18,7 @@ export const extractOverallRating = (aiAnalysis) => {
     /(?:^|\n)\s*(?:overall\s+)?rating[:\*\s]*(\d{1,3})(?:\s*\/?\s*100)?/i,
     /(\d{1,3})\s*\/\s*100/,
   ];
-  
+
   for (const pattern of ratingPatterns) {
     const match = text.match(pattern);
     if (match) {
@@ -28,7 +28,7 @@ export const extractOverallRating = (aiAnalysis) => {
       }
     }
   }
-  
+
   return null;
 };
 
@@ -37,11 +37,11 @@ export const extractOverallRating = (aiAnalysis) => {
  * @param {number|null} rating - The rating value
  * @returns {string} - Hex color code
  */
-export const getRatingColor = (rating) => {
+export const getRatingColor = rating => {
   if (rating === null || rating === undefined) {
     return theme.colors.rating.unknown;
   }
-  
+
   if (rating <= 20) return theme.colors.rating.dangerous;
   if (rating <= 40) return theme.colors.rating.poor;
   if (rating <= 60) return theme.colors.rating.fair;
@@ -54,7 +54,7 @@ export const getRatingColor = (rating) => {
  * @param {number|null} rating - The rating value
  * @returns {string} - Condition label
  */
-export const getConditionLabel = (rating) => {
+export const getConditionLabel = rating => {
   if (rating === null || rating === undefined) return 'Unknown';
   if (rating <= 20) return 'Dangerous/Flat';
   if (rating <= 40) return 'Poor/Rough';
@@ -72,8 +72,11 @@ export const getConditionLabel = (rating) => {
 const darkenColor = (hex, amount) => {
   const num = parseInt(hex.replace('#', ''), 16);
   const r = Math.max(0, Math.min(255, (num >> 16) - Math.round(255 * amount)));
-  const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) - Math.round(255 * amount)));
-  const b = Math.max(0, Math.min(255, (num & 0x0000FF) - Math.round(255 * amount)));
+  const g = Math.max(
+    0,
+    Math.min(255, ((num >> 8) & 0x00ff) - Math.round(255 * amount))
+  );
+  const b = Math.max(0, Math.min(255, (num & 0x0000ff) - Math.round(255 * amount)));
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 };
 
@@ -82,11 +85,11 @@ const darkenColor = (hex, amount) => {
  * @param {number|null} rating - The rating value
  * @returns {string} - CSS gradient string
  */
-export const getRatingGradient = (rating) => {
+export const getRatingGradient = rating => {
   if (rating === null || rating === undefined) {
     return `linear-gradient(135deg, ${theme.colors.rating.unknown} 0%, ${theme.colors.rating.unknownDark} 100%)`;
   }
-  
+
   const baseColor = getRatingColor(rating);
   return `linear-gradient(135deg, ${baseColor} 0%, ${darkenColor(baseColor, 0.1)} 100%)`;
 };
@@ -95,4 +98,3 @@ export const getRatingGradient = (rating) => {
  * Text color constant for rating cards
  */
 export const RATING_TEXT_COLOR = theme.colors.text.rating;
-

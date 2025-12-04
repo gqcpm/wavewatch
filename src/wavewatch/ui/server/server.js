@@ -18,32 +18,32 @@ app.use(express.json());
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/wavewatch';
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB connected successfully'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+mongoose
+  .connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log('✅ MongoDB connected successfully'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // API Routes for caching surf data
 app.get('/api/surf/:beach/:date', async (req, res) => {
   try {
     const { beach, date } = req.params;
-    
+
     // Check if data exists in MongoDB
-    const surfData = await SurfData.findOne({ 
-      beach_name: beach.toLowerCase(), 
-      date: date 
+    const surfData = await SurfData.findOne({
+      beach_name: beach.toLowerCase(),
+      date: date,
     });
-    
+
     if (surfData) {
       console.log('📦 Returning cached data from MongoDB');
       return res.json(surfData);
     }
-    
+
     // If not found, return null (frontend will fetch from Python API)
     res.json(null);
-    
   } catch (error) {
     console.error('Error fetching surf data:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -65,10 +65,10 @@ app.post('/api/surf', async (req, res) => {
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: '🌊 WaveWatch Express Server is running!',
     note: 'This server now caches surf data in MongoDB',
-    mongodb: 'MongoDB connected for caching surf data and AI responses'
+    mongodb: 'MongoDB connected for caching surf data and AI responses',
   });
 });
 

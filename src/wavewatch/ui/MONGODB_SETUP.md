@@ -3,6 +3,7 @@
 ## When to Add MongoDB Back
 
 Add MongoDB when you need:
+
 - 👤 User authentication and accounts
 - 💾 User-specific data (favorite beaches, preferences)
 - 📊 Analytics and user behavior tracking
@@ -11,24 +12,27 @@ Add MongoDB when you need:
 ## Quick Setup
 
 1. **Install MongoDB:**
+
    ```bash
    # macOS
    brew install mongodb-community
    brew services start mongodb-community
-   
+
    # Or use MongoDB Atlas (cloud)
    ```
 
 2. **Uncomment in server.js:**
+
    ```javascript
    const mongoose = require('mongoose');
    const dotenv = require('dotenv');
    dotenv.config();
-   
+
    // MongoDB connection code
    ```
 
 3. **Add to package.json:**
+
    ```json
    "mongoose": "^8.0.3",
    "dotenv": "^16.3.1"

@@ -10,19 +10,23 @@ const CardContainer = styled.div`
   box-shadow: ${theme.shadows.md};
   ${props => props.marginBottom && `margin-bottom: ${props.marginBottom};`}
   transition: box-shadow 0.2s ease;
-  
+
   &:hover {
-    box-shadow: ${props => props.hover ? theme.shadows.lg : theme.shadows.md};
+    box-shadow: ${props => (props.hover ? theme.shadows.lg : theme.shadows.md)};
   }
 `;
 
 const Card = ({ children, padding, marginBottom, hover = false, ...props }) => {
   return (
-    <CardContainer padding={padding} marginBottom={marginBottom} hover={hover} {...props}>
+    <CardContainer
+      padding={padding}
+      marginBottom={marginBottom}
+      hover={hover}
+      {...props}
+    >
       {children}
     </CardContainer>
   );
 };
 
 export default Card;
-

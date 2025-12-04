@@ -37,7 +37,7 @@ const StyledLink = styled(Link)`
   color: ${theme.colors.primary};
   text-decoration: none;
   font-weight: ${theme.typography.fontWeight.semibold};
-  
+
   &:hover {
     text-decoration: underline;
     color: ${theme.colors.secondary};
@@ -47,17 +47,17 @@ const StyledLink = styled(Link)`
 const LoginPage = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   });
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
     // Handle login logic here
   };

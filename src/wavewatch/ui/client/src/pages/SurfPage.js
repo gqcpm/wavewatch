@@ -90,7 +90,9 @@ const SummaryCard = styled(Card)`
 `;
 
 const SummaryCardContent = styled.div`
-  background: ${props => props.gradient || `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`};
+  background: ${props =>
+    props.gradient ||
+    `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`};
   color: ${props => props.textColor || theme.colors.white};
   padding: ${theme.spacing.xl};
   border-radius: ${theme.borderRadius.lg};
@@ -229,18 +231,20 @@ const ReasonLabel = styled.strong`
 
 const SurfPage = () => {
   const [beachName, setBeachName] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [surfData, setSurfData] = useState(null);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     if (!beachName.trim()) return;
 
     setLoading(true);
     setError('');
-    
+
     try {
       const data = await surfApi.getSurfData(beachName, selectedDate);
       setSurfData(data);
@@ -262,7 +266,7 @@ const SurfPage = () => {
               type="text"
               placeholder="e.g., Pleasure Point, Malibu"
               value={beachName}
-              onChange={(e) => setBeachName(e.target.value)}
+              onChange={e => setBeachName(e.target.value)}
             />
           </FormGroup>
           <FormGroup>
@@ -270,7 +274,7 @@ const SurfPage = () => {
             <Input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={e => setSelectedDate(e.target.value)}
             />
           </FormGroup>
           <Button type="submit" disabled={loading} size="large">
@@ -281,169 +285,278 @@ const SurfPage = () => {
 
       {loading && <LoadingSpinner message="Fetching surf conditions..." />}
       {error && <ErrorMessage message={error} />}
-      
+
       {surfData && (
         <>
           <BeachHeader>
             <BeachTitle>{surfData.beachName}</BeachTitle>
-            <BeachDate>{new Date(surfData.date).toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}</BeachDate>
+            <BeachDate>
+              {new Date(surfData.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </BeachDate>
           </BeachHeader>
 
           {/* Summary */}
-          {surfData.oneSentenceSummary && (() => {
-            const overallRating = extractOverallRating(surfData.aiAnalysis);
-            const conditionLabel = getConditionLabel(overallRating);
-            const gradient = getRatingGradient(overallRating);
-            
-            return (
-              <SummaryCard>
-                <SummaryCardContent gradient={gradient} textColor={RATING_TEXT_COLOR}>
-                  <SummaryHeader>
-                    <SummaryTitle textColor={RATING_TEXT_COLOR}>Forecast Summary</SummaryTitle>
-                    {overallRating !== null && (
-                      <RatingDisplay>
-                        <RatingBadge>
-                          <RatingNumber textColor={RATING_TEXT_COLOR}>{overallRating}</RatingNumber>
-                          <RatingLabel textColor={RATING_TEXT_COLOR}>
-                            {conditionLabel}
-                          </RatingLabel>
-                        </RatingBadge>
-                      </RatingDisplay>
-                    )}
-                  </SummaryHeader>
-                  <SummaryText textColor={RATING_TEXT_COLOR}>
-                    {surfData.oneSentenceSummary}
-                    {overallRating !== null && (
-                      <span style={{ display: 'block', marginTop: theme.spacing.sm, fontSize: theme.typography.fontSize.sm, opacity: 0.9 }}>
-                        Overall Rating: {overallRating}/100
-                      </span>
-                    )}
-                  </SummaryText>
-                </SummaryCardContent>
-              </SummaryCard>
-            );
-          })()}
+          {surfData.oneSentenceSummary &&
+            (() => {
+              const overallRating = extractOverallRating(surfData.aiAnalysis);
+              const conditionLabel = getConditionLabel(overallRating);
+              const gradient = getRatingGradient(overallRating);
+
+              return (
+                <SummaryCard>
+                  <SummaryCardContent gradient={gradient} textColor={RATING_TEXT_COLOR}>
+                    <SummaryHeader>
+                      <SummaryTitle textColor={RATING_TEXT_COLOR}>
+                        Forecast Summary
+                      </SummaryTitle>
+                      {overallRating !== null && (
+                        <RatingDisplay>
+                          <RatingBadge>
+                            <RatingNumber textColor={RATING_TEXT_COLOR}>
+                              {overallRating}
+                            </RatingNumber>
+                            <RatingLabel textColor={RATING_TEXT_COLOR}>
+                              {conditionLabel}
+                            </RatingLabel>
+                          </RatingBadge>
+                        </RatingDisplay>
+                      )}
+                    </SummaryHeader>
+                    <SummaryText textColor={RATING_TEXT_COLOR}>
+                      {surfData.oneSentenceSummary}
+                      {overallRating !== null && (
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: theme.spacing.sm,
+                            fontSize: theme.typography.fontSize.sm,
+                            opacity: 0.9,
+                          }}
+                        >
+                          Overall Rating: {overallRating}/100
+                        </span>
+                      )}
+                    </SummaryText>
+                  </SummaryCardContent>
+                </SummaryCard>
+              );
+            })()}
 
           {/* Current Conditions */}
           <SectionTitle>Current Conditions</SectionTitle>
           <MetricsGrid>
-            <MetricCard 
-              label="Wave Height" 
-              value={surfData.currentConditions?.wave_height || 'N/A'} 
+            <MetricCard
+              label="Wave Height"
+              value={surfData.currentConditions?.wave_height || 'N/A'}
               unit="ft"
               size="large"
               borderColor={getWaveHeightColor(surfData.currentConditions?.wave_height)}
             />
-            <MetricCard 
-              label="Wave Period" 
-              value={surfData.currentConditions?.wave_period || 'N/A'} 
+            <MetricCard
+              label="Wave Period"
+              value={surfData.currentConditions?.wave_period || 'N/A'}
               unit="s"
               borderColor={getWavePeriodColor(surfData.currentConditions?.wave_period)}
             />
-            <MetricCard 
-              label="Wind Speed" 
-              value={surfData.currentConditions?.wind_speed || 'N/A'} 
+            <MetricCard
+              label="Wind Speed"
+              value={surfData.currentConditions?.wind_speed || 'N/A'}
               unit="mph"
               borderColor={getWindSpeedColor(surfData.currentConditions?.wind_speed)}
             />
-            <MetricCard 
-              label="Wind Direction" 
-              value={surfData.currentConditions?.wind_direction || 'N/A'} 
+            <MetricCard
+              label="Wind Direction"
+              value={surfData.currentConditions?.wind_direction || 'N/A'}
               unit="°"
               borderColor={getWindDirectionColor(
                 surfData.currentConditions?.wind_direction,
                 surfData.currentConditions?.wind_speed
               )}
             />
-            <MetricCard 
-              label="Water Temp" 
-              value={surfData.currentConditions?.water_temperature || 'N/A'} 
+            <MetricCard
+              label="Water Temp"
+              value={surfData.currentConditions?.water_temperature || 'N/A'}
               unit="°F"
-              borderColor={getTemperatureColor(surfData.currentConditions?.water_temperature, 'water')}
+              borderColor={getTemperatureColor(
+                surfData.currentConditions?.water_temperature,
+                'water'
+              )}
             />
-            <MetricCard 
-              label="Air Temp" 
-              value={surfData.currentConditions?.air_temperature || 'N/A'} 
+            <MetricCard
+              label="Air Temp"
+              value={surfData.currentConditions?.air_temperature || 'N/A'}
               unit="°F"
-              borderColor={getTemperatureColor(surfData.currentConditions?.air_temperature, 'air')}
+              borderColor={getTemperatureColor(
+                surfData.currentConditions?.air_temperature,
+                'air'
+              )}
             />
           </MetricsGrid>
 
           {/* Wave Height Chart */}
-          <WaveHeightChart 
-            hourlyForecast={surfData.hourlyForecast} 
+          <WaveHeightChart
+            hourlyForecast={surfData.hourlyForecast}
             tideData={surfData.tideData}
           />
 
           {/* Best Surf Times */}
-          {Array.isArray(surfData.bestSurfTimes) && surfData.bestSurfTimes.length > 0 && (
-            <>
-              <SectionTitle>Best Surf Times</SectionTitle>
-              <BestTimesGrid>
-                {surfData.bestSurfTimes.map((time, index) => (
-                  <BestTimeCard key={index}>
-                    <BestTimeHeader>
-                      <BestTimeTitle>
-                        {time.time}
-                      </BestTimeTitle>
-                      {time.rating && (
-                        <BestTimeRating>Rating: {time.rating}/100</BestTimeRating>
+          {Array.isArray(surfData.bestSurfTimes) &&
+            surfData.bestSurfTimes.length > 0 && (
+              <>
+                <SectionTitle>Best Surf Times</SectionTitle>
+                <BestTimesGrid>
+                  {surfData.bestSurfTimes.map((time, index) => (
+                    <BestTimeCard key={index}>
+                      <BestTimeHeader>
+                        <BestTimeTitle>{time.time}</BestTimeTitle>
+                        {time.rating && (
+                          <BestTimeRating>Rating: {time.rating}/100</BestTimeRating>
+                        )}
+                      </BestTimeHeader>
+                      <BestTimeMetrics>
+                        {time.wave_height_range && (
+                          <div>
+                            <strong>Wave:</strong> {time.wave_height_range}
+                          </div>
+                        )}
+                        {time.period && (
+                          <div>
+                            <strong>Period:</strong> {time.period}s
+                          </div>
+                        )}
+                        {time.wind_speed_range && (
+                          <div>
+                            <strong>Wind:</strong> {time.wind_speed_range}
+                          </div>
+                        )}
+                      </BestTimeMetrics>
+                      {time.reason && (
+                        <BestTimeReason>
+                          <ReasonLabel>Why this time:</ReasonLabel>
+                          <div style={{ whiteSpace: 'pre-line' }}>{time.reason}</div>
+                        </BestTimeReason>
                       )}
-                    </BestTimeHeader>
-                    <BestTimeMetrics>
-                      {time.wave_height_range && (
-                        <div><strong>Wave:</strong> {time.wave_height_range}</div>
-                      )}
-                      {time.period && (
-                        <div><strong>Period:</strong> {time.period}s</div>
-                      )}
-                      {time.wind_speed_range && (
-                        <div><strong>Wind:</strong> {time.wind_speed_range}</div>
-                      )}
-                    </BestTimeMetrics>
-                    {time.reason && (
-                      <BestTimeReason>
-                        <ReasonLabel>Why this time:</ReasonLabel>
-                        <div style={{ whiteSpace: 'pre-line' }}>{time.reason}</div>
-                      </BestTimeReason>
-                    )}
-                  </BestTimeCard>
-                ))}
-              </BestTimesGrid>
-            </>
-          )}
+                    </BestTimeCard>
+                  ))}
+                </BestTimesGrid>
+              </>
+            )}
 
           {/* Break-Specific Ideal Conditions */}
-          {surfData.breakSpecificConditions && 
-           surfData.breakSpecificConditions.trim() !== "" && 
-           surfData.breakSpecificConditions !== "No break-specific information available. Using general surf forecasting principles." && (
-            <Card marginBottom={theme.spacing.xl} style={{ borderLeft: `4px solid ${theme.colors.primary}` }}>
-              <SectionTitle style={{ marginBottom: theme.spacing.md }}>
-                Ideal Conditions for {surfData.beachName}
-              </SectionTitle>
-              <div style={{ lineHeight: '1.8', color: theme.colors.text.primary }}>
-                <ReactMarkdown
-                  components={{
-                    h1: ({children}) => <h1 style={{color: theme.colors.primary, fontSize: theme.typography.fontSize.xl, margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`, fontWeight: theme.typography.fontWeight.bold}}>{children}</h1>,
-                    h2: ({children}) => <h2 style={{color: theme.colors.primary, fontSize: theme.typography.fontSize.lg, margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`, fontWeight: theme.typography.fontWeight.bold}}>{children}</h2>,
-                    h3: ({children}) => <h3 style={{color: theme.colors.primary, fontSize: theme.typography.fontSize.base, margin: `${theme.spacing.sm} 0 ${theme.spacing.xs} 0`, fontWeight: theme.typography.fontWeight.semibold}}>{children}</h3>,
-                    p: ({children}) => <p style={{margin: `${theme.spacing.sm} 0`, color: theme.colors.text.primary}}>{children}</p>,
-                    strong: ({children}) => <strong style={{color: theme.colors.primary, fontWeight: theme.typography.fontWeight.bold}}>{children}</strong>,
-                    ul: ({children}) => <ul style={{margin: `${theme.spacing.sm} 0`, paddingLeft: '1.5rem', color: theme.colors.text.primary}}>{children}</ul>,
-                    li: ({children}) => <li style={{margin: `${theme.spacing.xs} 0`, color: theme.colors.text.primary}}>{children}</li>,
-                    ol: ({children}) => <ol style={{margin: `${theme.spacing.sm} 0`, paddingLeft: '1.5rem', color: theme.colors.text.primary}}>{children}</ol>
-                  }}
-                >
-                  {surfData.breakSpecificConditions}
-                </ReactMarkdown>
-              </div>
-            </Card>
-          )}
+          {surfData.breakSpecificConditions &&
+            surfData.breakSpecificConditions.trim() !== '' &&
+            surfData.breakSpecificConditions !==
+              'No break-specific information available. Using general surf forecasting principles.' && (
+              <Card
+                marginBottom={theme.spacing.xl}
+                style={{ borderLeft: `4px solid ${theme.colors.primary}` }}
+              >
+                <SectionTitle style={{ marginBottom: theme.spacing.md }}>
+                  Ideal Conditions for {surfData.beachName}
+                </SectionTitle>
+                <div style={{ lineHeight: '1.8', color: theme.colors.text.primary }}>
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => (
+                        <h1
+                          style={{
+                            color: theme.colors.primary,
+                            fontSize: theme.typography.fontSize.xl,
+                            margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
+                            fontWeight: theme.typography.fontWeight.bold,
+                          }}
+                        >
+                          {children}
+                        </h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2
+                          style={{
+                            color: theme.colors.primary,
+                            fontSize: theme.typography.fontSize.lg,
+                            margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
+                            fontWeight: theme.typography.fontWeight.bold,
+                          }}
+                        >
+                          {children}
+                        </h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3
+                          style={{
+                            color: theme.colors.primary,
+                            fontSize: theme.typography.fontSize.base,
+                            margin: `${theme.spacing.sm} 0 ${theme.spacing.xs} 0`,
+                            fontWeight: theme.typography.fontWeight.semibold,
+                          }}
+                        >
+                          {children}
+                        </h3>
+                      ),
+                      p: ({ children }) => (
+                        <p
+                          style={{
+                            margin: `${theme.spacing.sm} 0`,
+                            color: theme.colors.text.primary,
+                          }}
+                        >
+                          {children}
+                        </p>
+                      ),
+                      strong: ({ children }) => (
+                        <strong
+                          style={{
+                            color: theme.colors.primary,
+                            fontWeight: theme.typography.fontWeight.bold,
+                          }}
+                        >
+                          {children}
+                        </strong>
+                      ),
+                      ul: ({ children }) => (
+                        <ul
+                          style={{
+                            margin: `${theme.spacing.sm} 0`,
+                            paddingLeft: '1.5rem',
+                            color: theme.colors.text.primary,
+                          }}
+                        >
+                          {children}
+                        </ul>
+                      ),
+                      li: ({ children }) => (
+                        <li
+                          style={{
+                            margin: `${theme.spacing.xs} 0`,
+                            color: theme.colors.text.primary,
+                          }}
+                        >
+                          {children}
+                        </li>
+                      ),
+                      ol: ({ children }) => (
+                        <ol
+                          style={{
+                            margin: `${theme.spacing.sm} 0`,
+                            paddingLeft: '1.5rem',
+                            color: theme.colors.text.primary,
+                          }}
+                        >
+                          {children}
+                        </ol>
+                      ),
+                    }}
+                  >
+                    {surfData.breakSpecificConditions}
+                  </ReactMarkdown>
+                </div>
+              </Card>
+            )}
 
           {/* AI Analysis */}
           {surfData.aiAnalysis && (
@@ -452,27 +565,115 @@ const SurfPage = () => {
               <div style={{ lineHeight: '1.8', color: theme.colors.text.primary }}>
                 <ReactMarkdown
                   components={{
-                    h1: ({children}) => <h1 style={{color: theme.colors.primary, fontSize: theme.typography.fontSize['2xl'], margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`, fontWeight: theme.typography.fontWeight.bold}}>{children}</h1>,
-                    h2: ({children}) => <h2 style={{color: theme.colors.primary, fontSize: theme.typography.fontSize.xl, margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`, fontWeight: theme.typography.fontWeight.bold}}>{children}</h2>,
-                    h3: ({children}) => <h3 style={{color: theme.colors.primary, fontSize: theme.typography.fontSize.lg, margin: `${theme.spacing.sm} 0 ${theme.spacing.xs} 0`, fontWeight: theme.typography.fontWeight.semibold}}>{children}</h3>,
-                    p: ({children}) => <p style={{margin: `${theme.spacing.sm} 0`, color: theme.colors.text.primary}}>{children}</p>,
-                    strong: ({children}) => <strong style={{color: theme.colors.primary, fontWeight: theme.typography.fontWeight.bold}}>{children}</strong>,
-                    ul: ({children}) => <ul style={{margin: `${theme.spacing.sm} 0`, paddingLeft: '1.5rem', color: theme.colors.text.primary}}>{children}</ul>,
-                    li: ({children}) => <li style={{margin: `${theme.spacing.xs} 0`, color: theme.colors.text.primary}}>{children}</li>,
-                    ol: ({children}) => <ol style={{margin: `${theme.spacing.sm} 0`, paddingLeft: '1.5rem', color: theme.colors.text.primary}}>{children}</ol>
+                    h1: ({ children }) => (
+                      <h1
+                        style={{
+                          color: theme.colors.primary,
+                          fontSize: theme.typography.fontSize['2xl'],
+                          margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
+                          fontWeight: theme.typography.fontWeight.bold,
+                        }}
+                      >
+                        {children}
+                      </h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2
+                        style={{
+                          color: theme.colors.primary,
+                          fontSize: theme.typography.fontSize.xl,
+                          margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
+                          fontWeight: theme.typography.fontWeight.bold,
+                        }}
+                      >
+                        {children}
+                      </h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3
+                        style={{
+                          color: theme.colors.primary,
+                          fontSize: theme.typography.fontSize.lg,
+                          margin: `${theme.spacing.sm} 0 ${theme.spacing.xs} 0`,
+                          fontWeight: theme.typography.fontWeight.semibold,
+                        }}
+                      >
+                        {children}
+                      </h3>
+                    ),
+                    p: ({ children }) => (
+                      <p
+                        style={{
+                          margin: `${theme.spacing.sm} 0`,
+                          color: theme.colors.text.primary,
+                        }}
+                      >
+                        {children}
+                      </p>
+                    ),
+                    strong: ({ children }) => (
+                      <strong
+                        style={{
+                          color: theme.colors.primary,
+                          fontWeight: theme.typography.fontWeight.bold,
+                        }}
+                      >
+                        {children}
+                      </strong>
+                    ),
+                    ul: ({ children }) => (
+                      <ul
+                        style={{
+                          margin: `${theme.spacing.sm} 0`,
+                          paddingLeft: '1.5rem',
+                          color: theme.colors.text.primary,
+                        }}
+                      >
+                        {children}
+                      </ul>
+                    ),
+                    li: ({ children }) => (
+                      <li
+                        style={{
+                          margin: `${theme.spacing.xs} 0`,
+                          color: theme.colors.text.primary,
+                        }}
+                      >
+                        {children}
+                      </li>
+                    ),
+                    ol: ({ children }) => (
+                      <ol
+                        style={{
+                          margin: `${theme.spacing.sm} 0`,
+                          paddingLeft: '1.5rem',
+                          color: theme.colors.text.primary,
+                        }}
+                      >
+                        {children}
+                      </ol>
+                    ),
                   }}
                 >
-                  {typeof surfData.aiAnalysis === 'string' ? surfData.aiAnalysis : JSON.stringify(surfData.aiAnalysis)}
+                  {typeof surfData.aiAnalysis === 'string'
+                    ? surfData.aiAnalysis
+                    : JSON.stringify(surfData.aiAnalysis)}
                 </ReactMarkdown>
               </div>
             </Card>
           )}
         </>
       )}
-      
+
       {!loading && !error && !surfData && (
         <Card>
-          <p style={{ textAlign: 'center', color: theme.colors.text.secondary, fontSize: theme.typography.fontSize.lg }}>
+          <p
+            style={{
+              textAlign: 'center',
+              color: theme.colors.text.secondary,
+              fontSize: theme.typography.fontSize.lg,
+            }}
+          >
             Enter a beach name and date to get surf conditions
           </p>
         </Card>

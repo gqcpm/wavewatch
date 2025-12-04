@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Area,
-  AreaChart
+  AreaChart,
 } from 'recharts';
 import { theme } from '../../../styles/theme';
 
@@ -42,34 +42,40 @@ const CustomTooltip = styled.div`
 
 const WaveHeightChart = ({ hourlyForecast, tideData }) => {
   // Transform the hourly forecast data for the chart
-  const chartData = hourlyForecast?.map((hour, index) => {
-    // Format time to HH:MM using built-in Date method
-    const time = new Date(hour.time).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false 
-    });
-    return {
-      time: time,
-      waveHeight: parseFloat(hour.waveHeight || hour.wave_height) || 0,
-      windSpeed: parseFloat(hour.windSpeed || hour.wind_speed) || 0,
-      windDirection: parseFloat(hour.windDirection || hour.wind_direction) || 0,
-      airTemperature: parseFloat(hour.airTemperature || hour.air_temperature) || 0,
-      fullTime: hour.time
-    };
-  }) || [];
+  const chartData =
+    hourlyForecast?.map((hour, index) => {
+      // Format time to HH:MM using built-in Date method
+      const time = new Date(hour.time).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      return {
+        time: time,
+        waveHeight: parseFloat(hour.waveHeight || hour.wave_height) || 0,
+        windSpeed: parseFloat(hour.windSpeed || hour.wind_speed) || 0,
+        windDirection: parseFloat(hour.windDirection || hour.wind_direction) || 0,
+        airTemperature: parseFloat(hour.airTemperature || hour.air_temperature) || 0,
+        fullTime: hour.time,
+      };
+    }) || [];
 
   // Transform tide data for chart (high/low points only)
   let tideChartData = [];
-  if (tideData && tideData.tide_conditions && Array.isArray(tideData.tide_conditions) && tideData.tide_conditions.length > 0) {
-    tideChartData = tideData.tide_conditions.map((tide) => ({
-      time: new Date(tide.time).toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        hour12: false 
+  if (
+    tideData &&
+    tideData.tide_conditions &&
+    Array.isArray(tideData.tide_conditions) &&
+    tideData.tide_conditions.length > 0
+  ) {
+    tideChartData = tideData.tide_conditions.map(tide => ({
+      time: new Date(tide.time).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
       }),
       tide: parseFloat(tide.tide) || 0,
-      fullTime: tide.time
+      fullTime: tide.time,
     }));
   }
 
@@ -78,8 +84,12 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
       const data = payload[0].payload;
       return (
         <CustomTooltip>
-          <p><strong>Time:</strong> {label}</p>
-          <p><strong>Wave Height:</strong> {data.waveHeight}ft</p>
+          <p>
+            <strong>Time:</strong> {label}
+          </p>
+          <p>
+            <strong>Wave Height:</strong> {data.waveHeight}ft
+          </p>
         </CustomTooltip>
       );
     }
@@ -92,9 +102,15 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
       const direction = getWindDirectionText(data.windDirection);
       return (
         <CustomTooltip>
-          <p><strong>Time:</strong> {label}</p>
-          <p><strong>Wind Speed:</strong> {data.windSpeed}mph</p>
-          <p><strong>Wind Direction:</strong> {direction} ({data.windDirection}°)</p>
+          <p>
+            <strong>Time:</strong> {label}
+          </p>
+          <p>
+            <strong>Wind Speed:</strong> {data.windSpeed}mph
+          </p>
+          <p>
+            <strong>Wind Direction:</strong> {direction} ({data.windDirection}°)
+          </p>
         </CustomTooltip>
       );
     }
@@ -106,8 +122,12 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
       const data = payload[0].payload;
       return (
         <CustomTooltip>
-          <p><strong>Time:</strong> {label}</p>
-          <p><strong>Tide:</strong> {data.tide}ft</p>
+          <p>
+            <strong>Time:</strong> {label}
+          </p>
+          <p>
+            <strong>Tide:</strong> {data.tide}ft
+          </p>
         </CustomTooltip>
       );
     }
@@ -115,7 +135,7 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
   };
 
   // Helper function to convert wind direction degrees to text
-  const getWindDirectionText = (degrees) => {
+  const getWindDirectionText = degrees => {
     if (degrees >= 337.5 || degrees < 22.5) return 'N';
     if (degrees >= 22.5 && degrees < 67.5) return 'NE';
     if (degrees >= 67.5 && degrees < 112.5) return 'E';
@@ -130,10 +150,17 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
   if (!hourlyForecast || hourlyForecast.length === 0) {
     return (
       <ChartContainer>
-      <ChartTitle>Wave Height Throughout the Day</ChartTitle>
-      <p style={{ color: theme.colors.text.secondary, textAlign: 'center', padding: theme.spacing.lg, fontSize: theme.typography.fontSize.base }}>
-        No hourly forecast data available
-      </p>
+        <ChartTitle>Wave Height Throughout the Day</ChartTitle>
+        <p
+          style={{
+            color: theme.colors.text.secondary,
+            textAlign: 'center',
+            padding: theme.spacing.lg,
+            fontSize: theme.typography.fontSize.base,
+          }}
+        >
+          No hourly forecast data available
+        </p>
       </ChartContainer>
     );
   }
@@ -153,26 +180,34 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
         >
           <defs>
             <linearGradient id="waveGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={theme.colors.accent.blue} stopOpacity={0.8}/>
-              <stop offset="95%" stopColor={theme.colors.accent.blue} stopOpacity={0.1}/>
+              <stop
+                offset="5%"
+                stopColor={theme.colors.accent.blue}
+                stopOpacity={0.8}
+              />
+              <stop
+                offset="95%"
+                stopColor={theme.colors.accent.blue}
+                stopOpacity={0.1}
+              />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.border.light} />
-          <XAxis 
-            dataKey="time" 
+          <XAxis
+            dataKey="time"
             stroke={theme.colors.text.secondary}
             fontSize={12}
             tick={{ fill: theme.colors.text.secondary }}
           />
-          <YAxis 
+          <YAxis
             stroke={theme.colors.text.secondary}
             fontSize={12}
             tick={{ fill: theme.colors.text.secondary }}
-            label={{ 
-              value: 'Wave Height (ft)', 
-              angle: -90, 
+            label={{
+              value: 'Wave Height (ft)',
+              angle: -90,
               position: 'insideLeft',
-              style: { textAnchor: 'middle', fill: theme.colors.text.secondary }
+              style: { textAnchor: 'middle', fill: theme.colors.text.secondary },
             }}
           />
           <Tooltip content={<WaveHeightTooltip />} />
@@ -183,14 +218,28 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
             strokeWidth={3}
             fill="url(#waveGradient)"
             dot={{ fill: theme.colors.accent.blue, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: theme.colors.accent.blue, strokeWidth: 2, fill: 'white' }}
+            activeDot={{
+              r: 6,
+              stroke: theme.colors.accent.blue,
+              strokeWidth: 2,
+              fill: 'white',
+            }}
           />
         </AreaChart>
       </ResponsiveContainer>
-      
+
       {/* Additional chart for wind speed */}
       <div style={{ marginTop: theme.spacing.xl }}>
-        <h5 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.bold }}>Wind Speed</h5>
+        <h5
+          style={{
+            color: theme.colors.text.primary,
+            marginBottom: theme.spacing.md,
+            fontSize: theme.typography.fontSize.lg,
+            fontWeight: theme.typography.fontWeight.bold,
+          }}
+        >
+          Wind Speed
+        </h5>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart
             data={chartData}
@@ -202,31 +251,36 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
             }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.border.light} />
-            <XAxis 
-              dataKey="time" 
+            <XAxis
+              dataKey="time"
               stroke={theme.colors.text.secondary}
               fontSize={12}
               tick={{ fill: theme.colors.text.secondary }}
             />
-            <YAxis 
+            <YAxis
               stroke={theme.colors.text.secondary}
               fontSize={12}
               tick={{ fill: theme.colors.text.secondary }}
-              label={{ 
-                value: 'Wind Speed (mph)', 
-                angle: -90, 
+              label={{
+                value: 'Wind Speed (mph)',
+                angle: -90,
                 position: 'insideLeft',
-                style: { textAnchor: 'middle', fill: theme.colors.text.secondary }
-            }}
-          />
-          <Tooltip content={<WindSpeedTooltip />} />
-          <Line
+                style: { textAnchor: 'middle', fill: theme.colors.text.secondary },
+              }}
+            />
+            <Tooltip content={<WindSpeedTooltip />} />
+            <Line
               type="monotone"
               dataKey="windSpeed"
               stroke={theme.colors.accent.red}
               strokeWidth={2}
               dot={{ fill: theme.colors.accent.red, strokeWidth: 2, r: 3 }}
-              activeDot={{ r: 5, stroke: theme.colors.accent.red, strokeWidth: 2, fill: 'white' }}
+              activeDot={{
+                r: 5,
+                stroke: theme.colors.accent.red,
+                strokeWidth: 2,
+                fill: 'white',
+              }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -235,7 +289,16 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
       {/* Tide chart - only high/low points with smooth curve */}
       {tideChartData.length > 0 && (
         <div style={{ marginTop: theme.spacing.xl }}>
-          <h5 style={{ color: theme.colors.text.primary, marginBottom: theme.spacing.md, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.bold }}>Tide (High/Low Points)</h5>
+          <h5
+            style={{
+              color: theme.colors.text.primary,
+              marginBottom: theme.spacing.md,
+              fontSize: theme.typography.fontSize.lg,
+              fontWeight: theme.typography.fontWeight.bold,
+            }}
+          >
+            Tide (High/Low Points)
+          </h5>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart
               data={tideChartData}
@@ -248,13 +311,21 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
             >
               <defs>
                 <linearGradient id="tideGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={theme.colors.accent.green} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={theme.colors.accent.green} stopOpacity={0.1}/>
+                  <stop
+                    offset="5%"
+                    stopColor={theme.colors.accent.green}
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor={theme.colors.accent.green}
+                    stopOpacity={0.1}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={theme.colors.border.light} />
-              <XAxis 
-                dataKey="time" 
+              <XAxis
+                dataKey="time"
                 stroke={theme.colors.text.secondary}
                 fontSize={12}
                 tick={{ fill: theme.colors.text.secondary }}
@@ -263,35 +334,38 @@ const WaveHeightChart = ({ hourlyForecast, tideData }) => {
                 textAnchor="end"
                 height={60}
               />
-              <YAxis 
+              <YAxis
                 stroke={theme.colors.text.secondary}
                 fontSize={12}
                 tick={{ fill: theme.colors.text.secondary }}
-                label={{ 
-                  value: 'Tide (ft)', 
-                  angle: -90, 
+                label={{
+                  value: 'Tide (ft)',
+                  angle: -90,
                   position: 'insideLeft',
-                  style: { textAnchor: 'middle', fill: theme.colors.text.secondary }
+                  style: { textAnchor: 'middle', fill: theme.colors.text.secondary },
                 }}
               />
               <Tooltip content={<TideTooltip />} />
               <Area
-                type="natural"  // Natural spline creates smooth sinusoidal curve through points
+                type="natural" // Natural spline creates smooth sinusoidal curve through points
                 dataKey="tide"
                 stroke={theme.colors.accent.green}
                 strokeWidth={2}
                 fill="url(#tideGradient)"
-                dot={{ fill: theme.colors.accent.green, strokeWidth: 2, r: 5 }}  // Visible dots for high/low points
-                activeDot={{ r: 7, stroke: theme.colors.accent.green, strokeWidth: 2, fill: 'white' }}
+                dot={{ fill: theme.colors.accent.green, strokeWidth: 2, r: 5 }} // Visible dots for high/low points
+                activeDot={{
+                  r: 7,
+                  stroke: theme.colors.accent.green,
+                  strokeWidth: 2,
+                  fill: 'white',
+                }}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
-      
     </ChartContainer>
   );
 };
 
 export default WaveHeightChart;
-
