@@ -6,8 +6,8 @@
   "scripts": {
     "lint:js": "eslint 'src/**/*.{js,jsx}'",
     "format:js": "prettier --write 'src/**/*.{js,jsx,json,md}'",
-    "lint:py": "flake8 src/wavewatch/ surf_api.py streamlit_app.py",
-    "format:py": "black src/wavewatch/ surf_api.py streamlit_app.py",
+    "lint:py": "flake8 src/wavewatch/ surf_api.py",
+    "format:py": "black src/wavewatch/ surf_api.py",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "cd src/wavewatch/ui/client && npm test -- --watchAll=false",
     "test:e2e": "echo 'E2E tests not yet configured'",

@@ -118,30 +118,17 @@ class SurfApiService {
   }
 
   // Method to create a proper API endpoint in your Python backend
-  // You would call this from your Python Streamlit app
+  // This is already implemented in surf_api.py
   async createApiEndpoint() {
     console.log(`
-    To create a proper API endpoint, add this to your Python Streamlit app:
+    The API endpoint is already implemented in surf_api.py.
     
-    import streamlit as st
-    from fastapi import FastAPI
-    import uvicorn
+    To use it, start the FastAPI server:
     
-    # Create FastAPI app
-    api = FastAPI()
+    python3 surf_api.py
     
-    @api.get("/api/surf/{beach_name}/{date}")
-    async def get_surf_data(beach_name: str, date: str):
-        # Your existing surf data fetching logic here
-        # Return JSON data instead of displaying in Streamlit
-        return surf_data
-    
-    # Run both Streamlit and FastAPI
-    if __name__ == "__main__":
-        # Start FastAPI in background
-        uvicorn.run(api, host="0.0.0.0", port=8000)
-        # Start Streamlit
-        streamlit run streamlit_app.py
+    The API will be available at http://localhost:8001
+    API documentation: http://localhost:8001/docs
     `);
   }
 }

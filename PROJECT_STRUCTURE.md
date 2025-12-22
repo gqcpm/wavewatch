@@ -45,7 +45,7 @@ src/wavewatch/
 ## 🚀 Entry Points (Root)
 
 - `surf_api.py` - FastAPI server (port 8001)
-- `streamlit_app.py` - Streamlit UI
+- `setup.sh` - Setup and start script
 - `start_api.sh` - Start FastAPI script
 
 ## 🗄️ Node.js Cache Server (`src/wavewatch/ui/server/`)
