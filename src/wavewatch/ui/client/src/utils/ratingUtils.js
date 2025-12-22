@@ -14,8 +14,8 @@ export const extractOverallRating = aiAnalysis => {
   // "Overall Surf Rating: 88/100" or "Overall Surf Rating:** 88/100"
   // "Rating: 88/100" or "88/100"
   const ratingPatterns = [
-    /overall\s+surf\s+rating[:\*\s]*(\d{1,3})(?:\s*\/?\s*100)?/i,
-    /(?:^|\n)\s*(?:overall\s+)?rating[:\*\s]*(\d{1,3})(?:\s*\/?\s*100)?/i,
+    /overall\s+surf\s+rating[:*\s]*(\d{1,3})(?:\s*\/?\s*100)?/i,
+    /(?:^|\n)\s*(?:overall\s+)?rating[:*\s]*(\d{1,3})(?:\s*\/?\s*100)?/i,
     /(\d{1,3})\s*\/\s*100/,
   ];
 

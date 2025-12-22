@@ -287,9 +287,9 @@ def create_surf_map(beach_name, coordinates, current_conditions):
 
         # Add legend
         legend_html = """
-        <div style="position: fixed; 
-                    bottom: 50px; left: 50px; width: 200px; height: 90px; 
-                    background-color: white; border:2px solid grey; z-index:9999; 
+        <div style="position: fixed;
+                    bottom: 50px; left: 50px; width: 200px; height: 90px;
+                    background-color: white; border:2px solid grey; z-index:9999;
                     font-size:14px; padding: 10px">
         <p><b>Direction Legend:</b></p>
         <p><i class="fa fa-arrow-up" style="color:blue"></i> Swell Direction</p>
@@ -315,7 +315,7 @@ def get_one_sentence_summary(
             beach_name, current_conditions, selected_date
         )
     except Exception as e:
-        return f"🌊 Surf conditions at {beach_name} are currently being assessed."
+        return f"🌊 Surf conditions at {beach_name} are currently being assessed. \n Error: {e}"
 
 
 # Configure page

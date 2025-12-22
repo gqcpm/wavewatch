@@ -27,7 +27,7 @@ B. **Analysis**: Provide ONLY the following analysis:
 
 Keep it concise and actionable. Skip basic metrics since they're already displayed. Provide ONLY ONE best time period - the single optimal window for surfing."""
 
-ONE_SENTENCE_SUMMARY_PROMPT = """Based on these surf conditions, provide a single sentence assessment of the surf quality at {beach_name} on {selected_date}. 
+ONE_SENTENCE_SUMMARY_PROMPT = """Based on these surf conditions, provide a single sentence assessment of the surf quality at {beach_name} on {selected_date}.
 
 {formatted_conditions}
 

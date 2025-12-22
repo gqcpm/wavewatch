@@ -121,11 +121,15 @@ class SurfSummarizer:
             )
 
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash-001", contents=prompt
+                model="gemini-2.5-flash-lite", contents=prompt
             )
             return response.text
         except Exception as e:
-            print(f"Error extracting break-specific conditions: {e}")
+            error_msg = str(e)
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                return f"⚠️ Gemini API rate limit exceeded while extracting break-specific conditions. \
+                No break-specific information available. Using general surf forecasting principles. (Error: {error_msg})"
+            print(f"Error extracting break-specific conditions: {error_msg}")
             return "Error extracting break-specific conditions. Using general surf forecasting principles."
 
     def get_surf_conditions(
@@ -159,16 +163,16 @@ class SurfSummarizer:
 
                     if search_results:
                         print(
-                            f"📝 Extracting break-specific conditions from search results..."
+                            "📝 Extracting break-specific conditions from search results..."
                         )
                         break_specific_conditions = (
                             self._extract_break_specific_conditions(
                                 surf_beach, search_results
                             )
                         )
-                        print(f"✅ Break-specific conditions extracted")
+                        print("✅ Break-specific conditions extracted")
                     else:
-                        print(f"⚠️ No search results found, using general principles")
+                        print("⚠️ No search results found, using general principles")
 
                 # Format the surf data for the prompt
                 formatted_data = self._format_surf_data(surf_data)
@@ -188,11 +192,19 @@ class SurfSummarizer:
                 break_specific_conditions = ""
 
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash-001", contents=prompt
+                model="gemini-2.5-flash-lite", contents=prompt
             )
             return response.text, break_specific_conditions
         except Exception as e:
-            return f"Error generating surf conditions: {str(e)}", ""
+            error_msg = str(e)
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                print(f"⚠️ Gemini API rate limit exceeded. Check your quota at https://console.cloud.google.com/apis/dashboard")
+                return (
+                    f"⚠️ API rate limit exceeded. Please check your Google Cloud Console for quota usage. \
+                    If you haven't used this API recently, your key may be compromised - consider rotating it. (Error: {error_msg})",
+                    break_specific_conditions if 'break_specific_conditions' in locals() else ""
+                )
+            return f"Error generating surf conditions: {error_msg}", ""
 
     def get_one_sentence_summary(
         self, beach_name: str, surf_data: dict, selected_date: str = None
@@ -219,11 +231,15 @@ class SurfSummarizer:
             )
 
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash-001", contents=prompt
+                model="gemini-2.5-flash-lite", contents=prompt
             )
             return response.text
         except Exception as e:
-            return f"Error generating summary: {str(e)}"
+            error_msg = str(e)
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                print(f"⚠️ Gemini API rate limit exceeded. Check your quota at https://console.cloud.google.com/apis/dashboard")
+                return "⚠️ API rate limit exceeded. Please check your Google Cloud Console for quota usage."
+            return f"Error generating summary: {error_msg}"
 
     def _format_surf_data(self, surf_data: dict) -> str:
         """

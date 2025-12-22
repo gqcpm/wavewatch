@@ -10,13 +10,15 @@ import uvicorn
 import sys
 import os
 
-# Add the src directory to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from wavewatch.api.data_fetcher import StormglassDataFetcher
 from wavewatch.llm.summarizer import SurfSummarizer
 from dotenv import load_dotenv
 from datetime import datetime
+
+# Add the src directory to Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+
 
 # Load environment variables
 load_dotenv()
@@ -79,6 +81,7 @@ async def get_surf_data(beach_name: str, date: str):
                             tide_data = {}
                     except Exception as e:
                         tide_data = {}
+                        print(f"Error getting tide data: {e}")
 
                     # Format response from cache
                     ai_analysis_dict = cached_data.get("ai_analysis", {})
@@ -142,9 +145,20 @@ async def get_surf_data(beach_name: str, date: str):
         ai_analysis_text, break_specific_conditions = summarizer.get_surf_conditions(
             beach_name, surf_data_for_ai, date
         )
-        one_sentence_summary = summarizer.get_one_sentence_summary(
-            beach_name, surf_data_for_ai, date
-        )
+        # Skip one-sentence summary if main analysis failed to save API calls
+        one_sentence_summary = ""
+        if (
+            ai_analysis_text
+            and "Error" not in ai_analysis_text
+            and "429" not in ai_analysis_text
+        ):
+            try:
+                one_sentence_summary = summarizer.get_one_sentence_summary(
+                    beach_name, surf_data_for_ai, date
+                )
+            except Exception as e:
+                print(f"⚠️ Could not generate one-sentence summary: {e}")
+                one_sentence_summary = ""
         best_surf_times = summarizer.parse_best_times_from_analysis(ai_analysis_text)
 
         # Get tide data
@@ -155,6 +169,7 @@ async def get_surf_data(beach_name: str, date: str):
                 tide_data = {}
         except Exception as e:
             tide_data = {}
+            print(f"Error getting tide data: {e}")
 
         # Cache complete response in MongoDB (using schema field names)
         cache_data = {

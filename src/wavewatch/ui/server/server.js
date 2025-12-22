@@ -29,6 +29,11 @@ mongoose
 // API Routes for caching surf data
 app.get('/api/surf/:beach/:date', async (req, res) => {
   try {
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      return res.json(null); // MongoDB not connected, return null to fetch fresh
+    }
+
     const { beach, date } = req.params;
 
     // Check if data exists in MongoDB
@@ -45,21 +50,28 @@ app.get('/api/surf/:beach/:date', async (req, res) => {
     // If not found, return null (frontend will fetch from Python API)
     res.json(null);
   } catch (error) {
-    console.error('Error fetching surf data:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error fetching surf data:', error.message);
+    // Return null on error so app can still work
+    res.json(null);
   }
 });
 
 // Store surf data in MongoDB
 app.post('/api/surf', async (req, res) => {
   try {
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ success: false, message: 'MongoDB not connected' });
+    }
+
     const surfData = new SurfData(req.body);
     await surfData.save();
     console.log('💾 Saved surf data to MongoDB');
     res.json({ success: true, id: surfData._id });
   } catch (error) {
-    console.error('Error saving surf data:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error saving surf data:', error.message);
+    // Return success anyway so app doesn't break
+    res.json({ success: false, message: error.message });
   }
 });
 
