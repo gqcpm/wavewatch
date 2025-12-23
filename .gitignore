@@ -1,8 +1,7 @@
 # Environment variables
 .env
 
-# Cache files
-surf_data_cache.json
+# Cache files (all caching handled by MongoDB)
 
 # macOS
 .DS_Store
