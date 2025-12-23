@@ -198,7 +198,7 @@ class SurfSummarizer:
         except Exception as e:
             error_msg = str(e)
             if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-                print(f"⚠️ Gemini API rate limit exceeded. Check your quota at https://console.cloud.google.com/apis/dashboard")
+                print("⚠️ Gemini API rate limit exceeded. Check your quota at https://console.cloud.google.com/apis/dashboard")
                 return (
                     f"⚠️ API rate limit exceeded. Please check your Google Cloud Console for quota usage. \
                     If you haven't used this API recently, your key may be compromised - consider rotating it. (Error: {error_msg})",
@@ -237,7 +237,7 @@ class SurfSummarizer:
         except Exception as e:
             error_msg = str(e)
             if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-                print(f"⚠️ Gemini API rate limit exceeded. Check your quota at https://console.cloud.google.com/apis/dashboard")
+                print("⚠️ Gemini API rate limit exceeded. Check your quota at https://console.cloud.google.com/apis/dashboard")
                 return "⚠️ API rate limit exceeded. Please check your Google Cloud Console for quota usage."
             return f"Error generating summary: {error_msg}"
 

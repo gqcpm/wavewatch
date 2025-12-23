@@ -4,7 +4,6 @@ Fetches swell, wind, tide, and other surf data in a single API call.
 """
 
 import os
-import json
 import time
 import requests
 from datetime import datetime, timedelta
@@ -106,7 +105,6 @@ class StormglassDataFetcher:
             "tourmaline": (32.8000, -117.2667),
             "linda mar": (37.5986, -122.5006),  # Pacifica, CA
         }
-
 
     def _get_beach_coordinates(self, beach_name: str) -> Optional[Tuple[float, float]]:
         """
@@ -293,7 +291,7 @@ class StormglassDataFetcher:
                                 tide_time = datetime.strptime(
                                     tide_time_str, "%Y-%m-%d %H:%M"
                                 )
-                            except:
+                            except ValueError:
                                 # Try alternative format
                                 tide_time = datetime.strptime(
                                     tide_time_str, "%Y-%m-%d %H:%M:%S"
@@ -377,7 +375,7 @@ class StormglassDataFetcher:
                                 tide_time = datetime.strptime(
                                     tide_time_str, "%Y-%m-%d %H:%M"
                                 )
-                            except:
+                            except ValueError:
                                 tide_time = datetime.strptime(
                                     tide_time_str, "%Y-%m-%d %H:%M:%S"
                                 )

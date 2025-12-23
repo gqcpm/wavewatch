@@ -21,7 +21,7 @@ module.exports = {
   plugins: ['react', 'react-hooks'],
   settings: {
     react: {
-      version: 'detect',
+      version: '18.2', // Set explicit version to avoid detection warning
     },
   },
   rules: {
@@ -33,7 +33,7 @@ module.exports = {
   ignorePatterns: ['build/', 'node_modules/', '*.config.js'],
   overrides: [
     {
-      // Server-side code (Node.js/Express) - disable React rules
+      // Server-side code (Node.js/Express) - disable React rules and allow console
       files: ['**/server/**/*.js', '**/server/**/*.jsx'],
       env: {
         node: true,
@@ -42,6 +42,7 @@ module.exports = {
       rules: {
         'react/react-in-jsx-scope': 'off',
         'react/prop-types': 'off',
+        'no-console': 'off', // Console is appropriate for server logging
       },
     },
   ],
