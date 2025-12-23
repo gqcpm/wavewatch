@@ -15,14 +15,19 @@ We welcome contributions! To keep the process smooth and code quality high, plea
 3. **Install dependencies:**
 
    ```bash
-   # Install Node.js dependencies
-   npm install
-
    # Install Python dependencies
    pip install -r requirements.txt
 
    # Install development dependencies
    pip install -r requirements-dev.txt
+
+   # Install Node.js dependencies for client and server
+   cd src/wavewatch/ui/client && npm install
+   cd ../server && npm install
+   cd ../../../../
+
+   # Install JavaScript dev tools (ESLint, Prettier)
+   make install-dev-deps
    ```
 
 4. **Create a new branch** using the format `feature/my-new-feature` or `fix/critical-bug`.
@@ -37,7 +42,7 @@ Ensure all code style is uniform. This command automatically fixes most formatti
 
 ```bash
 # Runs Prettier for JS/TS and Black for Python
-npm run format
+make format
 ```
 
 ### 2. Code Quality (Linting & Testing)
@@ -45,7 +50,7 @@ npm run format
 The following script runs all linters and tests. It must report zero errors to proceed.
 
 ```bash
-npm run check-all
+make check-all
 ```
 
 This command will:
@@ -60,24 +65,24 @@ If you need to run checks individually:
 
 ```bash
 # JavaScript/TypeScript linting
-npm run lint:js
+make lint-js
 
 # JavaScript/TypeScript formatting
-npm run format:js
+make format-js
 
 # Python linting
-npm run lint:py
+make lint-py
 
 # Python formatting
-npm run format:py
+make format-py
 
 # Run tests only
-npm run test
+make test
 ```
 
 ## 📝 Pull Request Process
 
-1. Ensure all automated checks pass (`npm run check-all`)
+1. Ensure all automated checks pass (`make check-all`)
 2. Update documentation if you've changed functionality
 3. Write clear commit messages
 4. Reference any related issues in your PR description

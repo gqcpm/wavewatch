@@ -45,8 +45,7 @@ src/wavewatch/
 ## 🚀 Entry Points (Root)
 
 - `surf_api.py` - FastAPI server (port 8001)
-- `setup.sh` - Setup and start script
-- `start_api.sh` - Start FastAPI script
+- `setup.sh` - Setup and start script (installs dependencies and starts full stack)
 
 ## 🗄️ Node.js Cache Server (`src/wavewatch/ui/server/`)
 

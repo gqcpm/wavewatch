@@ -20,7 +20,6 @@ A full-stack surf forecasting application that provides surf conditions for any 
    Or manually:
    ```bash
    pip install -r requirements.txt
-   npm install
    cd src/wavewatch/ui/client && npm install
    cd ../server && npm install
    ```
