@@ -35,8 +35,6 @@ class StormglassDataFetcher:
 
         self.api_key = api_key
         self.base_url = "https://api.stormglass.io/v2"
-        self.cache_file = "surf_data_cache.json"
-        self.cache_expiry = 86400  # 24 hours in seconds
 
         # Mapping of beaches to NOAA tide stations (use actual station IDs)
         self.tide_stations = {
@@ -109,23 +107,6 @@ class StormglassDataFetcher:
             "linda mar": (37.5986, -122.5006),  # Pacifica, CA
         }
 
-    def _load_cache(self) -> Dict:
-        """Load cached data from file."""
-        try:
-            if os.path.exists(self.cache_file):
-                with open(self.cache_file, "r") as file:
-                    return json.load(file)
-        except (json.JSONDecodeError, FileNotFoundError):
-            pass
-        return {}
-
-    def _save_cache(self, cache: Dict) -> None:
-        """Save data to cache file."""
-        try:
-            with open(self.cache_file, "w") as file:
-                json.dump(cache, file, indent=2)
-        except Exception as e:
-            print(f"Warning: Could not save cache: {e}")
 
     def _get_beach_coordinates(self, beach_name: str) -> Optional[Tuple[float, float]]:
         """
@@ -458,26 +439,7 @@ class StormglassDataFetcher:
                 }
             lat, lng = coords
 
-        # Check cache first
-        cache = self._load_cache()
-        # Create cache key with date
-        date_suffix = f"_{target_date}" if target_date else ""
-        cache_key = f"{lat},{lng}{date_suffix}"
-        current_time = time.time()
-
-        if cache_key in cache:
-            cached_data = cache[cache_key]
-            if (current_time - cached_data["timestamp"]) < self.cache_expiry:
-                return {
-                    "beach_name": beach_name,
-                    "coordinates": {"lat": lat, "lng": lng},
-                    "data": cached_data["data"],
-                    "tide_data": cached_data.get("tide_data", {}),
-                    "cached": True,
-                    "timestamp": cached_data["timestamp"],
-                }
-
-        # Make API call
+        # Make API call (no JSON caching - MongoDB handles all caching)
         try:
             # Single API call with all parameters for the entire day
             url = f"{self.base_url}/weather/point"
@@ -545,14 +507,8 @@ class StormglassDataFetcher:
                 # Get NOAA tide data
                 tide_data = self._get_noaa_tide_data(beach_name, target_date)
 
-                # Cache the data
-                cache_data = {
-                    "data": data,
-                    "tide_data": tide_data,
-                    "timestamp": current_time,
-                }
-                cache[cache_key] = cache_data
-                self._save_cache(cache)
+                # Note: Processed data is cached in MongoDB by surf_api.py
+                # No JSON caching needed
 
                 return {
                     "beach_name": beach_name,
@@ -560,7 +516,7 @@ class StormglassDataFetcher:
                     "data": data,
                     "tide_data": tide_data,
                     "cached": False,
-                    "timestamp": current_time,
+                    "timestamp": time.time(),
                 }
             else:
                 return {
@@ -600,6 +556,33 @@ class StormglassDataFetcher:
         Returns:
             Dictionary with hourly conditions for the day
         """
+        # Check MongoDB first for processed data
+        lookup_date = target_date or datetime.now().strftime("%Y-%m-%d")
+        try:
+            response = requests.get(
+                f"http://localhost:5001/api/surf/{beach_name}/{lookup_date}",
+                timeout=2
+            )
+            if response.status_code == 200:
+                surf_data = response.json()
+                if surf_data and surf_data.get("hourly_conditions"):
+                    print("📦 Using cached hourly conditions from MongoDB SurfData")
+                    # Get coordinates if not provided
+                    if lat is None or lng is None:
+                        coords = self._get_beach_coordinates(beach_name)
+                        if coords:
+                            lat, lng = coords
+                    return {
+                        "beach_name": beach_name,
+                        "coordinates": surf_data.get("coordinates", {"lat": lat, "lng": lng}),
+                        "cached": True,
+                        "hourly_conditions": surf_data.get("hourly_conditions", []),
+                        "total_hours": len(surf_data.get("hourly_conditions", [])),
+                    }
+        except Exception as e:
+            print(f"Warning: Could not check MongoDB for hourly conditions: {e}")
+
+        # Fallback: fetch and process raw data
         result = self.fetch_surf_data(beach_name, lat, lng, target_date)
 
         if "error" in result:
@@ -791,7 +774,32 @@ class StormglassDataFetcher:
         Returns:
             Dictionary with current conditions
         """
-        current_hour_index = datetime.now().hour
+        # Check MongoDB first for processed data
+        lookup_date = target_date or datetime.now().strftime("%Y-%m-%d")
+        try:
+            response = requests.get(
+                f"http://localhost:5001/api/surf/{beach_name}/{lookup_date}",
+                timeout=2
+            )
+            if response.status_code == 200:
+                surf_data = response.json()
+                if surf_data and surf_data.get("current_conditions"):
+                    print("📦 Using cached current conditions from MongoDB SurfData")
+                    # Get coordinates if not provided
+                    if lat is None or lng is None:
+                        coords = self._get_beach_coordinates(beach_name)
+                        if coords:
+                            lat, lng = coords
+                    return {
+                        "beach_name": beach_name,
+                        "coordinates": surf_data.get("coordinates", {"lat": lat, "lng": lng}),
+                        "cached": True,
+                        "current_conditions": surf_data.get("current_conditions", {}),
+                    }
+        except Exception as e:
+            print(f"Warning: Could not check MongoDB for current conditions: {e}")
+
+        # Fallback: fetch and process raw data
         result = self.fetch_surf_data(beach_name, lat, lng, target_date)
 
         if "error" in result:
@@ -799,6 +807,7 @@ class StormglassDataFetcher:
 
         try:
             data = result["data"]
+            current_hour_index = datetime.now().hour
             try:
                 current_hour = data["hours"][current_hour_index]
             except IndexError:
