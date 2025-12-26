@@ -108,7 +108,7 @@ cd "$SCRIPT_DIR"
 
 # Start FastAPI backend in background
 echo "📡 Starting FastAPI backend (port 8001)..."
-python3 surf_api.py &
+PYTHONPATH=src python3 surf_api.py &
 FASTAPI_PID=$!
 echo "   FastAPI started (PID: $FASTAPI_PID)"
 
