@@ -5,11 +5,6 @@ class SurfApiService {
   // Get surf data for a specific beach and date
   async getSurfData(beachName, date) {
     try {
-      console.log(
-        `🌊 Fetching REAL surf data for ${beachName} on ${date} from ${API_BASE_URL}`
-      );
-
-      // Call the FastAPI backend
       const response = await fetch(`${API_BASE_URL}/api/surf/${beachName}/${date}`);
 
       if (!response.ok) {
@@ -18,12 +13,9 @@ class SurfApiService {
       }
 
       const data = await response.json();
-      console.log('✅ Received REAL surf data from Stormglass API:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error fetching surf data:', error);
       // Fallback to mock data if API is not available
-      console.log('🔄 Falling back to mock data...');
       return this.getMockSurfData(beachName, date);
     }
   }
@@ -117,20 +109,6 @@ class SurfApiService {
     };
   }
 
-  // Method to create a proper API endpoint in your Python backend
-  // This is already implemented in surf_api.py
-  async createApiEndpoint() {
-    console.log(`
-    The API endpoint is already implemented in surf_api.py.
-    
-    To use it, start the FastAPI server:
-    
-    python3 surf_api.py
-    
-    The API will be available at http://localhost:8001
-    API documentation: http://localhost:8001/docs
-    `);
-  }
 }
 
 const surfApiService = new SurfApiService();

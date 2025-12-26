@@ -2,19 +2,52 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const session = require('express-session');
 
-// Load environment variables from project root
+// Load environment variables from project root FIRST, before requiring passport
 dotenv.config({ path: '../../../../.env' });
+
+const passport = require('./config/passport');
 
 // Import models
 const SurfData = require('./models/SurfData');
+
+// Import routes
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+// Session configuration
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('SESSION_SECRET must be set in production');
+}
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/wavewatch';
@@ -23,8 +56,12 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('MongoDB connected');
+    }
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // API Routes for caching surf data
 app.get('/api/surf/:beach/:date', async (req, res) => {
@@ -43,15 +80,15 @@ app.get('/api/surf/:beach/:date', async (req, res) => {
     });
 
     if (surfData) {
-      console.log('📦 Returning cached data from MongoDB');
       return res.json(surfData);
     }
 
     // If not found, return null (frontend will fetch from Python API)
     res.json(null);
   } catch (error) {
-    console.error('Error fetching surf data:', error.message);
-    // Return null on error so app can still work
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error fetching surf data:', error.message);
+    }
     res.json(null);
   }
 });
@@ -66,23 +103,21 @@ app.post('/api/surf', async (req, res) => {
 
     const surfData = new SurfData(req.body);
     await surfData.save();
-    console.log('💾 Saved surf data to MongoDB');
     res.json({ success: true, id: surfData._id });
   } catch (error) {
-    console.error('Error saving surf data:', error.message);
-    // Return success anyway so app doesn't break
-    res.json({ success: false, message: error.message });
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error saving surf data:', error.message);
+    }
+    res.json({ success: false, message: 'Failed to save data' });
   }
 });
 
+// Authentication routes
+app.use('/api/auth', authRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({
-    message: '🌊 WaveWatch Express Server is running!',
-    note: 'This server now caches surf data in MongoDB',
-    mongodb: 'MongoDB connected for caching surf data and AI responses',
-  });
+  res.json({ status: 'ok' });
 });
 
 // Health check
@@ -92,13 +127,14 @@ app.get('/health', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, _next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err.stack);
+  }
+  res.status(500).json({ message: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Express server running on port ${PORT}`);
-  console.log(`📡 Surf data comes from Python FastAPI on port 8001`);
-  console.log(`🗄️ MongoDB connected for caching surf data and AI responses`);
-  console.log(`💾 Cache expires after 24 hours`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Server running on port ${PORT}`);
+  }
 });

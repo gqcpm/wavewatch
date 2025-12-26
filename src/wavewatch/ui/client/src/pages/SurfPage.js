@@ -296,10 +296,10 @@ const SurfPage = () => {
                 const [year, month, day] = surfData.date.split('-').map(Number);
                 const date = new Date(year, month - 1, day);
                 return date.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
                 });
               })()}
             </BeachDate>
