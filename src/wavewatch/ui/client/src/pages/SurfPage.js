@@ -506,11 +506,11 @@ const SurfPage = () => {
               </>
             )}
 
-          {/* Break-Specific Ideal Conditions */}
-          {surfData.breakSpecificConditions &&
-            surfData.breakSpecificConditions.trim() !== '' &&
-            surfData.breakSpecificConditions !==
-              'No break-specific information available. Using general surf forecasting principles.' && (
+          {/* Ideal Conditions */}
+          {surfData.idealConditions &&
+            surfData.idealConditions.trim() !== '' &&
+            surfData.idealConditions !==
+              'No ideal conditions information available. Using general surf forecasting principles.' && (
               <Card
                 marginBottom={theme.spacing.xl}
                 style={{ borderLeft: `4px solid ${theme.colors.primary}` }}
@@ -611,7 +611,7 @@ const SurfPage = () => {
                       ),
                     }}
                   >
-                    {surfData.breakSpecificConditions}
+                    {surfData.idealConditions}
                   </ReactMarkdown>
                 </div>
               </Card>

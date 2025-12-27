@@ -58,6 +58,9 @@ const surfDataSchema = new mongoose.Schema({
       score: Number,
     },
   ],
+  ideal_conditions: {
+    type: String,
+  },
   ai_analysis: {
     text: String,
     overall_rating: String,

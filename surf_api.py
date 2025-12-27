@@ -91,12 +91,11 @@ async def get_surf_data(beach_name: str, date: str):
                         else cached_data.get("ai_analysis", "")
                     )
 
-                    # Parse best times from cached AI analysis
-                    best_surf_times = (
-                        summarizer.parse_best_times_from_analysis(ai_analysis)
-                        if ai_analysis
-                        else []
-                    )
+                    # Use cached best_surf_times if available, otherwise parse from AI analysis
+                    best_surf_times = cached_data.get("best_surf_times", [])
+                    if not best_surf_times and ai_analysis:
+                        # Fallback: parse from AI analysis if not in cache
+                        best_surf_times = summarizer.parse_best_times_from_analysis(ai_analysis)
 
                     # Handle both hourly_forecast (legacy) and hourly_conditions (schema) field names
                     hourly_forecast = cached_data.get(
@@ -109,8 +108,8 @@ async def get_surf_data(beach_name: str, date: str):
                         "currentConditions": cached_data.get("current_conditions", {}),
                         "hourlyForecast": hourly_forecast,
                         "bestSurfTimes": best_surf_times,
-                        "breakSpecificConditions": cached_data.get(
-                            "break_specific_conditions", ""
+                        "idealConditions": cached_data.get(
+                            "ideal_conditions", ""
                         ),
                         "aiAnalysis": ai_analysis,
                         "oneSentenceSummary": cached_data.get(
@@ -142,7 +141,7 @@ async def get_surf_data(beach_name: str, date: str):
         )
 
         # Generate AI analysis
-        ai_analysis_text, break_specific_conditions = summarizer.get_surf_conditions(
+        ai_analysis_text, ideal_conditions = summarizer.get_surf_conditions(
             beach_name, surf_data_for_ai, date
         )
         # Skip one-sentence summary if main analysis failed to save API calls
@@ -178,7 +177,7 @@ async def get_surf_data(beach_name: str, date: str):
             "current_conditions": current_conditions,
             "hourly_conditions": hourly_forecast,  # MongoDB schema uses hourly_conditions
             "best_surf_times": best_surf_times,
-            "break_specific_conditions": break_specific_conditions,
+            "ideal_conditions": ideal_conditions,
             "ai_analysis": {
                 "text": ai_analysis_text,
                 "overall_rating": "N/A",
@@ -207,7 +206,7 @@ async def get_surf_data(beach_name: str, date: str):
             ),
             "hourlyForecast": hourly_forecast,
             "bestSurfTimes": best_surf_times,
-            "breakSpecificConditions": break_specific_conditions,
+            "idealConditions": ideal_conditions,
             "aiAnalysis": ai_analysis_text,
             "oneSentenceSummary": one_sentence_summary,
             "tideData": tide_data,
