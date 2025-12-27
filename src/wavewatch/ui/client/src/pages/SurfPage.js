@@ -21,7 +21,6 @@ import {
   getWavePeriodColor,
   getWindSpeedColor,
   getWindDirectionColor,
-  getTemperatureColor,
 } from '../utils/conditionUtils';
 
 const SurfContainer = styled.div`
@@ -229,6 +228,68 @@ const ReasonLabel = styled.strong`
   font-weight: ${theme.typography.fontWeight.semibold};
 `;
 
+const CollapsibleSection = styled.div`
+  position: relative;
+`;
+
+const CollapsibleHeader = styled.div`
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const CollapsibleContent = styled.div`
+  position: relative;
+  max-height: ${props => (props.expanded ? 'none' : '140px')};
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+`;
+
+const FadeOverlay = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    ${theme.colors.background.primary} 70%
+  );
+  pointer-events: none;
+  opacity: ${props => (props.expanded ? 0 : 1)};
+  transition: opacity 0.4s ease;
+  z-index: 1;
+`;
+
+const ExpandButton = styled.button`
+  background: ${theme.colors.primary};
+  color: white;
+  border: none;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: ${theme.spacing.md};
+  display: ${props => (props.expanded ? 'none' : 'block')};
+  width: 100%;
+
+  &:hover {
+    background: ${theme.colors.secondary};
+    transform: translateY(-1px);
+    box-shadow: ${theme.shadows.md};
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 const SurfPage = () => {
   const [beachName, setBeachName] = useState('');
   const [selectedDate, setSelectedDate] = useState(
@@ -237,6 +298,7 @@ const SurfPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [surfData, setSurfData] = useState(null);
+  const [aiAnalysisExpanded, setAiAnalysisExpanded] = useState(false);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -387,19 +449,11 @@ const SurfPage = () => {
               label="Water Temp"
               value={surfData.currentConditions?.water_temperature || 'N/A'}
               unit="°F"
-              borderColor={getTemperatureColor(
-                surfData.currentConditions?.water_temperature,
-                'water'
-              )}
             />
             <MetricCard
               label="Air Temp"
               value={surfData.currentConditions?.air_temperature || 'N/A'}
               unit="°F"
-              borderColor={getTemperatureColor(
-                surfData.currentConditions?.air_temperature,
-                'air'
-              )}
             />
           </MetricsGrid>
 
@@ -566,105 +620,125 @@ const SurfPage = () => {
           {/* AI Analysis */}
           {surfData.aiAnalysis && (
             <Card marginBottom={theme.spacing.xl}>
-              <SectionTitle>AI Analysis</SectionTitle>
-              <div style={{ lineHeight: '1.8', color: theme.colors.text.primary }}>
-                <ReactMarkdown
-                  components={{
-                    h1: ({ children }) => (
-                      <h1
-                        style={{
-                          color: theme.colors.primary,
-                          fontSize: theme.typography.fontSize['2xl'],
-                          margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
-                          fontWeight: theme.typography.fontWeight.bold,
-                        }}
-                      >
-                        {children}
-                      </h1>
-                    ),
-                    h2: ({ children }) => (
-                      <h2
-                        style={{
-                          color: theme.colors.primary,
-                          fontSize: theme.typography.fontSize.xl,
-                          margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
-                          fontWeight: theme.typography.fontWeight.bold,
-                        }}
-                      >
-                        {children}
-                      </h2>
-                    ),
-                    h3: ({ children }) => (
-                      <h3
-                        style={{
-                          color: theme.colors.primary,
-                          fontSize: theme.typography.fontSize.lg,
-                          margin: `${theme.spacing.sm} 0 ${theme.spacing.xs} 0`,
-                          fontWeight: theme.typography.fontWeight.semibold,
-                        }}
-                      >
-                        {children}
-                      </h3>
-                    ),
-                    p: ({ children }) => (
-                      <p
-                        style={{
-                          margin: `${theme.spacing.sm} 0`,
-                          color: theme.colors.text.primary,
-                        }}
-                      >
-                        {children}
-                      </p>
-                    ),
-                    strong: ({ children }) => (
-                      <strong
-                        style={{
-                          color: theme.colors.primary,
-                          fontWeight: theme.typography.fontWeight.bold,
-                        }}
-                      >
-                        {children}
-                      </strong>
-                    ),
-                    ul: ({ children }) => (
-                      <ul
-                        style={{
-                          margin: `${theme.spacing.sm} 0`,
-                          paddingLeft: '1.5rem',
-                          color: theme.colors.text.primary,
-                        }}
-                      >
-                        {children}
-                      </ul>
-                    ),
-                    li: ({ children }) => (
-                      <li
-                        style={{
-                          margin: `${theme.spacing.xs} 0`,
-                          color: theme.colors.text.primary,
-                        }}
-                      >
-                        {children}
-                      </li>
-                    ),
-                    ol: ({ children }) => (
-                      <ol
-                        style={{
-                          margin: `${theme.spacing.sm} 0`,
-                          paddingLeft: '1.5rem',
-                          color: theme.colors.text.primary,
-                        }}
-                      >
-                        {children}
-                      </ol>
-                    ),
-                  }}
+              <CollapsibleSection>
+                <CollapsibleHeader onClick={() => setAiAnalysisExpanded(!aiAnalysisExpanded)}>
+                  <SectionTitle>AI Analysis</SectionTitle>
+                  <span style={{ 
+                    color: theme.colors.primary, 
+                    fontSize: theme.typography.fontSize.sm,
+                    fontWeight: theme.typography.fontWeight.medium
+                  }}>
+                    {aiAnalysisExpanded ? '▼' : '▶'}
+                  </span>
+                </CollapsibleHeader>
+                <CollapsibleContent expanded={aiAnalysisExpanded}>
+                  <div style={{ lineHeight: '1.8', color: theme.colors.text.primary }}>
+                    <ReactMarkdown
+                      components={{
+                        h1: ({ children }) => (
+                          <h1
+                            style={{
+                              color: theme.colors.primary,
+                              fontSize: theme.typography.fontSize['2xl'],
+                              margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
+                              fontWeight: theme.typography.fontWeight.bold,
+                            }}
+                          >
+                            {children}
+                          </h1>
+                        ),
+                        h2: ({ children }) => (
+                          <h2
+                            style={{
+                              color: theme.colors.primary,
+                              fontSize: theme.typography.fontSize.xl,
+                              margin: `${theme.spacing.md} 0 ${theme.spacing.sm} 0`,
+                              fontWeight: theme.typography.fontWeight.bold,
+                            }}
+                          >
+                            {children}
+                          </h2>
+                        ),
+                        h3: ({ children }) => (
+                          <h3
+                            style={{
+                              color: theme.colors.primary,
+                              fontSize: theme.typography.fontSize.lg,
+                              margin: `${theme.spacing.sm} 0 ${theme.spacing.xs} 0`,
+                              fontWeight: theme.typography.fontWeight.semibold,
+                            }}
+                          >
+                            {children}
+                          </h3>
+                        ),
+                        p: ({ children }) => (
+                          <p
+                            style={{
+                              margin: `${theme.spacing.sm} 0`,
+                              color: theme.colors.text.primary,
+                            }}
+                          >
+                            {children}
+                          </p>
+                        ),
+                        strong: ({ children }) => (
+                          <strong
+                            style={{
+                              color: theme.colors.primary,
+                              fontWeight: theme.typography.fontWeight.bold,
+                            }}
+                          >
+                            {children}
+                          </strong>
+                        ),
+                        ul: ({ children }) => (
+                          <ul
+                            style={{
+                              margin: `${theme.spacing.sm} 0`,
+                              paddingLeft: '1.5rem',
+                              color: theme.colors.text.primary,
+                            }}
+                          >
+                            {children}
+                          </ul>
+                        ),
+                        li: ({ children }) => (
+                          <li
+                            style={{
+                              margin: `${theme.spacing.xs} 0`,
+                              color: theme.colors.text.primary,
+                            }}
+                          >
+                            {children}
+                          </li>
+                        ),
+                        ol: ({ children }) => (
+                          <ol
+                            style={{
+                              margin: `${theme.spacing.sm} 0`,
+                              paddingLeft: '1.5rem',
+                              color: theme.colors.text.primary,
+                            }}
+                          >
+                            {children}
+                          </ol>
+                        ),
+                      }}
+                    >
+                      {typeof surfData.aiAnalysis === 'string'
+                        ? surfData.aiAnalysis
+                        : JSON.stringify(surfData.aiAnalysis)}
+                    </ReactMarkdown>
+                  </div>
+                  {!aiAnalysisExpanded && <FadeOverlay expanded={aiAnalysisExpanded} />}
+                </CollapsibleContent>
+                <ExpandButton 
+                  expanded={aiAnalysisExpanded}
+                  onClick={() => setAiAnalysisExpanded(true)}
                 >
-                  {typeof surfData.aiAnalysis === 'string'
-                    ? surfData.aiAnalysis
-                    : JSON.stringify(surfData.aiAnalysis)}
-                </ReactMarkdown>
-              </div>
+                  Show Full Analysis
+                </ExpandButton>
+              </CollapsibleSection>
             </Card>
           )}
         </>
