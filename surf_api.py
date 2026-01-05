@@ -91,11 +91,14 @@ async def get_surf_data(beach_name: str, date: str):
                         else cached_data.get("ai_analysis", "")
                     )
 
-                    # Use cached best_surf_times if available, otherwise parse from AI analysis
-                    best_surf_times = cached_data.get("best_surf_times", [])
-                    if not best_surf_times and ai_analysis:
-                        # Fallback: parse from AI analysis if not in cache
+                    # Always re-parse best_surf_times from AI analysis to ensure we have the latest format
+                    # This fixes issues with old cached data that might have incorrect parsing
+                    best_surf_times = []
+                    if ai_analysis:
                         best_surf_times = summarizer.parse_best_times_from_analysis(ai_analysis)
+                    # Fallback to cached if parsing fails
+                    if not best_surf_times:
+                        best_surf_times = cached_data.get("best_surf_times", [])
 
                     # Handle both hourly_forecast (legacy) and hourly_conditions (schema) field names
                     hourly_forecast = cached_data.get(

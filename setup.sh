@@ -53,7 +53,15 @@ fi
 
 echo "✅ Python and Node.js are installed"
 
-# Install dependencies if INSTALL_DEPS is true
+# Check if critical Python dependencies are installed
+check_python_deps() {
+    python3 -c "import fastapi" 2>/dev/null && \
+    python3 -c "import uvicorn" 2>/dev/null && \
+    python3 -c "import google.genai" 2>/dev/null && \
+    python3 -c "import pinecone" 2>/dev/null
+}
+
+# Install dependencies if INSTALL_DEPS is true or if critical deps are missing
 if [ "$INSTALL_DEPS" = "true" ]; then
     echo ""
     echo "📦 Installing dependencies (INSTALL_DEPS=true)..."
@@ -61,7 +69,7 @@ if [ "$INSTALL_DEPS" = "true" ]; then
     
     # Install Python dependencies
     echo "📦 Installing Python dependencies..."
-    pip install -r requirements.txt
+    python3 -m pip install -r requirements.txt
 
     # Install Node.js dependencies for React client
     echo "📦 Installing React client dependencies..."
@@ -81,10 +89,21 @@ if [ "$INSTALL_DEPS" = "true" ]; then
     
     echo ""
     echo "✅ Dependencies installed!"
+elif ! check_python_deps; then
+    echo ""
+    echo "📦 Installing missing Python dependencies..."
+    echo ""
+    
+    # Install Python dependencies
+    echo "📦 Installing Python dependencies from requirements.txt..."
+    python3 -m pip install -r requirements.txt
+    
+    echo ""
+    echo "✅ Python dependencies installed!"
 else
     echo ""
-    echo "⏭️  Skipping dependency installation (INSTALL_DEPS=false)"
-    echo "   To install dependencies, run: INSTALL_DEPS=true ./setup.sh"
+    echo "✅ Critical Python dependencies are already installed"
+    echo "   To reinstall all dependencies, run: INSTALL_DEPS=true ./setup.sh"
 fi
 
 # Create .env file if it doesn't exist
@@ -108,23 +127,41 @@ cd "$SCRIPT_DIR"
 
 # Start FastAPI backend in background
 echo "📡 Starting FastAPI backend (port 8001)..."
-PYTHONPATH=src python3 surf_api.py &
+cd "$SCRIPT_DIR"
+PYTHONPATH=src nohup python3 surf_api.py > /tmp/fastapi.log 2>&1 &
 FASTAPI_PID=$!
 echo "   FastAPI started (PID: $FASTAPI_PID)"
 
-# Wait a moment for FastAPI to start
-sleep 2
+# Wait a moment for FastAPI to start and verify it's running
+sleep 3
+if ps -p $FASTAPI_PID > /dev/null 2>&1; then
+    echo "   ✅ FastAPI process is running"
+    # Try to verify the server is responding
+    if curl -s http://localhost:8001/ > /dev/null 2>&1; then
+        echo "   ✅ FastAPI server is responding"
+    else
+        echo "   ⚠️  FastAPI server may still be starting..."
+    fi
+else
+    echo "   ❌ FastAPI process failed to start. Check /tmp/fastapi.log for errors"
+    cat /tmp/fastapi.log 2>/dev/null || echo "   No log file found"
+fi
 
 # Start Express server in background
 if [ -d "src/wavewatch/ui/server" ]; then
     echo "🗄️  Starting Express/MongoDB server (port 5001)..."
     cd src/wavewatch/ui/server
-    npm start &
+    nohup npm start > /tmp/express.log 2>&1 &
     EXPRESS_PID=$!
     echo "   Express server started (PID: $EXPRESS_PID)"
     cd "$SCRIPT_DIR"
     # Wait a moment for Express to start
-    sleep 2
+    sleep 3
+    if ps -p $EXPRESS_PID > /dev/null 2>&1; then
+        echo "   ✅ Express process is running"
+    else
+        echo "   ⚠️  Express process may have failed. Check /tmp/express.log for errors"
+    fi
 else
     echo "⚠️  Express server directory not found, skipping..."
     EXPRESS_PID=""
@@ -133,10 +170,17 @@ fi
 # Start React frontend in background
 echo "⚛️  Starting React frontend (port 3000)..."
 cd src/wavewatch/ui/client
-npm start &
+nohup npm start > /tmp/react.log 2>&1 &
 REACT_PID=$!
 echo "   React frontend started (PID: $REACT_PID)"
-cd "$SCRIPT_DIR"../
+cd "$SCRIPT_DIR"
+# Wait a moment for React to start
+sleep 5
+if ps -p $REACT_PID > /dev/null 2>&1; then
+    echo "   ✅ React process is running"
+else
+    echo "   ⚠️  React process may have failed. Check /tmp/react.log for errors"
+fi
 
 echo ""
 echo "✅ All services started!"

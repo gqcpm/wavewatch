@@ -12,6 +12,16 @@ from .prompt_templates import (
     IDEAL_CONDITIONS_EXTRACTION_PROMPT,
 )
 
+# Import RAG components (with fallback if not available)
+try:
+    from ..rag.knowledge_base import beach_has_knowledge_base
+    from ..rag.retriever import RAGRetriever
+    RAG_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    RAG_AVAILABLE = False
+    beach_has_knowledge_base = None
+    RAGRetriever = None
+
 
 class SurfSummarizer:
     """Summarizer for surf conditions using Google Gemini."""
@@ -35,7 +45,8 @@ class SurfSummarizer:
 
     def _generate_ideal_conditions(self, beach_name: str) -> str:
         """
-        Generate ideal conditions for a specific break using LLM general knowledge.
+        Generate ideal conditions for a specific break.
+        Uses RAG if knowledge base exists, otherwise falls back to LLM general knowledge.
 
         Args:
             beach_name: Name of the beach/break
@@ -43,10 +54,63 @@ class SurfSummarizer:
         Returns:
             Ideal conditions as formatted string
         """
+        # Check if RAG is available and knowledge base exists
+        use_rag = False
+        rag_context = ""
+        
+        if RAG_AVAILABLE and beach_has_knowledge_base(beach_name):
+            try:
+                print(f"📚 Using RAG knowledge base for {beach_name}")
+                # Initialize retriever without auto-initializing index (in case it doesn't exist)
+                retriever = RAGRetriever(initialize_index=False)
+                
+                # Try to initialize index, but don't fail if it doesn't exist
+                try:
+                    retriever.vector_store.initialize_index()
+                    index_available = True
+                except Exception as idx_error:
+                    print(f"⚠️ Pinecone index not available, falling back to LLM: {idx_error}")
+                    index_available = False
+                
+                if index_available:
+                    # Retrieve relevant context about ideal conditions
+                    query = f"ideal conditions for {beach_name} surf break"
+                    results = retriever.retrieve(
+                        query=query,
+                        beach_name=beach_name,
+                        top_k=5,
+                    )
+                    
+                    if results:
+                        rag_context = retriever.format_context(results, max_length=1500)
+                        use_rag = True
+                        print(f"✅ Retrieved {len(results)} relevant chunks from knowledge base")
+                    else:
+                        print(f"⚠️ No results found in knowledge base, falling back to LLM")
+            except Exception as e:
+                print(f"⚠️ Error using RAG, falling back to LLM: {e}")
+        else:
+            if not RAG_AVAILABLE:
+                print(f"📝 RAG not available, using LLM general knowledge for {beach_name}")
+            else:
+                print(f"📝 No knowledge base found for {beach_name}, using LLM general knowledge")
+        
+        # Build prompt with or without RAG context
         try:
+            if use_rag and rag_context:
+                # RAG-enhanced prompt
+                search_results = f"""The following information was retrieved from the knowledge base about {beach_name}:
+
+{rag_context}
+
+Use this retrieved knowledge as the primary source for ideal conditions. If the retrieved information doesn't cover all aspects, supplement with your general knowledge about similar breaks and surf forecasting principles."""
+            else:
+                # Original LLM-only prompt
+                search_results = "Use your general knowledge about this surf break. If you don't have specific knowledge about this exact break, use your understanding of similar breaks and general surf forecasting principles."
+            
             prompt = IDEAL_CONDITIONS_EXTRACTION_PROMPT.format(
                 beach_name=beach_name, 
-                search_results="Use your general knowledge about this surf break. If you don't have specific knowledge about this exact break, use your understanding of similar breaks and general surf forecasting principles."
+                search_results=search_results
             )
 
             response = self.client.models.generate_content(
@@ -300,205 +364,87 @@ Hour {i+1} ({time_str}):
         Returns:
             List of dictionaries with best times data
         """
-        best_times = []
-
         try:
-            # Look for the "Best Time to Surf" section (singular - only one time)
-            # Pattern to match the section that comes after "2. **Best Time to Surf:**" or "Best Time to Surf:**"
-            # The new format has the time after the colon: "Best Time to Surf:** 8:00 AM - 9:00 AM"
-            best_times_pattern = r"(?i)(?:2\.\s*\*\*best time to surf\*\*:?\s*\*\*|best time to surf:?\s*\*\*)[:\s]*(.*?)(?=\*\*3\.|3\.\s*\*\*|specific recommendations|notable changes|$)"
-
-            # Find the best times section
-            best_times_match = re.search(
-                best_times_pattern, ai_analysis_text, re.DOTALL
+            # Find the "Best Time to Surf" section
+            # Format can be:
+            # "2.  **Best Time to Surf on 2026-01-05:** 12:00 PM - 1:00 PM\n    *   **Rating:**..."
+            # OR "2.  **Best Time to Surf on 2026-01-07:**\n    *   The time range: **8:00 AM - 9:00 AM**\n    ..."
+            # Find the entire section including the header line
+            section_match = re.search(
+                r"Best Time to Surf.*?:\*\*(.*?)(?=\n\s*3\.\s+\*\*)",
+                ai_analysis_text,
+                re.DOTALL | re.IGNORECASE,
             )
-
-            if not best_times_match:
-                # Try alternative patterns (handle variations)
-                best_times_pattern = r"(?i)(?:2\.\s*\*\*best times to surf\*\*:|best times to surf:)[:\s]*(.*?)(?=\*\*3\.|3\.\s*\*\*|specific recommendations|notable changes|$)"
-                best_times_match = re.search(
-                    best_times_pattern, ai_analysis_text, re.DOTALL
-                )
-
-            if not best_times_match:
-                # Try without colon
-                best_times_pattern = r"(?i)best time to surf.*?\n(.*?)(?=\n\*\*|\n\d+\.\s*\*\*|specific recommendations|notable changes|$)"
-                best_times_match = re.search(
-                    best_times_pattern, ai_analysis_text, re.DOTALL
-                )
-
-            if not best_times_match:
+            if not section_match:
                 return []
-
-            best_times_section = best_times_match.group(1)
-
-            # The new format has the time at the start after "Best Time to Surf:"
-            # Format: "Best Time to Surf: 8:00 AM - 9:00 AM\n    *   Rating: 80/100\n    ..."
-            # Since we're only getting ONE time, the entire section is one entry
-            # Extract time from the beginning of the section (could be on same line or next line)
-            time_at_start = re.search(
-                r"^([0-9]{1,2}[:.]?[0-9]{0,2}\s*(?:AM|PM|am|pm)?(?:\s*[-–—]\s*[0-9]{1,2}[:.]?[0-9]{0,2}\s*(?:AM|PM|am|pm))?)[:\s]*",
-                best_times_section,
-                re.IGNORECASE | re.MULTILINE,
+            
+            # Get the full section including header line
+            full_section = section_match.group(0)  # Includes the header
+            section = section_match.group(1)  # Content after header
+            
+            # Extract time - check if it's on the header line first
+            # Format 1: "Best Time to Surf on 2026-01-05:** 12:00 PM - 1:00 PM"
+            time_match = re.search(
+                r":\*\*\s*([0-9]{1,2}:[0-9]{2}\s*[AP]M\s*[-–—]\s*[0-9]{1,2}:[0-9]{2}\s*[AP]M)",
+                full_section,
+                re.IGNORECASE,
             )
-
-            if time_at_start:
-                # Single entry - the entire section
-                entries = [best_times_section]
-            else:
-                # Fallback: try finding time ranges with colons or list format
-                time_pattern = r"([0-9]{1,2}[:.]?[0-9]{0,2}\s*(?:AM|PM|am|pm)?(?:\s*[-–—]\s*[0-9]{1,2}[:.]?[0-9]{0,2}\s*(?:AM|PM|am|pm))?):?"
-                matches = list(
-                    re.finditer(time_pattern, best_times_section, re.IGNORECASE)
-                )
-
-                if matches:
-                    entries = []
-                    for i, match in enumerate(matches):
-                        start = match.start()
-                        end = (
-                            matches[i + 1].start()
-                            if i + 1 < len(matches)
-                            else len(best_times_section)
-                        )
-                        entries.append(best_times_section[start:end])
-                else:
-                    # No time found, use entire section as one entry
-                    entries = [best_times_section]
-
-            for entry_text in entries:
-                entry_text = entry_text.strip()
-                if not entry_text:
-                    continue
-
-                # Extract time - in new format it's at the start: "8:00 AM - 9:00 AM\n    *   Rating:..."
-                # Or could be: "Best Time to Surf: 8:00 AM - 9:00 AM" (already extracted in section)
+            if not time_match:
+                # Format 2: "The time range: **8:00 AM - 9:00 AM**"
                 time_match = re.search(
-                    r"([0-9]{1,2}[:.]?[0-9]{0,2}\s*(?:AM|PM|am|pm)?(?:\s*[-–—]\s*[0-9]{1,2}[:.]?[0-9]{0,2}\s*(?:AM|PM|am|pm))?)[:\s]*",
-                    entry_text,
+                    r"time range:\s*\*\*([0-9]{1,2}:[0-9]{2}\s*[AP]M\s*[-–—]\s*[0-9]{1,2}:[0-9]{2}\s*[AP]M)\*\*",
+                    full_section,
                     re.IGNORECASE,
                 )
-                if not time_match:
-                    continue
-
-                time_str = time_match.group(1).strip()
-                # Clean up time if it has a trailing colon
-                if time_str.endswith(":"):
-                    time_str = time_str[:-1].strip()
-
-                # Extract rating (1-100) - handle formats like "*   Rating: 80/100" or "Rating: 80"
-                rating_match = re.search(
-                    r"(?:\*\s*)?(?:rating|score|rated)[:\s]*(\d{1,3})(?:\s*/?\s*100)?",
-                    entry_text,
-                    re.IGNORECASE,
-                )
-                rating = int(rating_match.group(1)) if rating_match else None
-
-                # Extract wave height range - handle formats like "*   Wave Height: 5.6-5.7ft"
-                wave_match = re.search(
-                    r"(?:\*\s*)?wave[^\d]*?(?:height|size)?[:\s]*(\d+\.?\d*\s*[-–—]\s*\d+\.?\d*ft)",
-                    entry_text,
-                    re.IGNORECASE,
-                )
-                if not wave_match:
-                    # Fallback to single value
-                    wave_match = re.search(
-                        r"(?:\*\s*)?wave[^\d]*?(?:height|size)?[:\s]*(\d+\.?\d*ft)",
-                        entry_text,
-                        re.IGNORECASE,
-                    )
-                wave_height_range = wave_match.group(1).strip() if wave_match else None
-
-                # Extract period - handle formats like "*   Wave Period: 12s"
-                period_match = re.search(
-                    r"(?:\*\s*)?period[^\d]*?[:\s]*(\d+)\s*s(?:ec(?:ond)?s?)?",
-                    entry_text,
-                    re.IGNORECASE,
-                )
-                period = int(period_match.group(1)) if period_match else None
-
-                # Extract wind speed range - handle formats like "*   Wind Speed: 2.9-3.3mph"
-                wind_match = re.search(
-                    r"(?:\*\s*)?wind[^\d]*?(?:speed)?[:\s]*(\d+\.?\d*\s*[-–—]\s*\d+\.?\d*mph)",
-                    entry_text,
-                    re.IGNORECASE,
-                )
-                if not wind_match:
-                    # Fallback to single value
-                    wind_match = re.search(
-                        r"(?:\*\s*)?wind[^\d]*?(?:speed)?[:\s]*(\d+\.?\d*mph)",
-                        entry_text,
-                        re.IGNORECASE,
-                    )
-                wind_speed_range = wind_match.group(1).strip() if wind_match else None
-
-                # Extract explanation - look for "Explanation:" marker
-                explanation_match = re.search(
-                    r"explanation[:\s]+(.+?)(?=\n\s*(?:specific recommendations|notable changes|\d+\.\s*\*\*|$))",
-                    entry_text,
-                    re.IGNORECASE | re.DOTALL,
-                )
-                if not explanation_match:
-                    # Fallback: find "Explanation:" anywhere and get everything after
-                    explanation_match = re.search(
-                        r"(?:\*\*)?explanation[:\s]+(.+)",
-                        entry_text,
-                        re.IGNORECASE | re.DOTALL,
-                    )
-
-                if explanation_match:
-                    reason = explanation_match.group(1).strip()
-                else:
-                    # Fallback: try old format with "reason" keyword
-                    reason_match = re.search(
-                        r"(?:reason|explanation)[:\s]+(.+)",
-                        entry_text,
-                        re.IGNORECASE | re.DOTALL,
-                    )
-                    if reason_match:
-                        reason = reason_match.group(1).strip()
-                    else:
-                        reason = None
-
-                # Clean up the explanation text - preserve newlines but clean up markdown
-                if reason:
-                    # Remove markdown formatting
-                    reason = re.sub(r"\*\*", "", reason)
-                    reason = re.sub(r"\*", "", reason)
-                    # Preserve newlines but normalize multiple spaces within lines
-                    # Replace multiple spaces with single space, but keep newlines
-                    reason = re.sub(
-                        r"[ \t]+", " ", reason
-                    )  # Normalize spaces/tabs but keep newlines
-                    reason = re.sub(
-                        r"\n[ \t]*\n+", "\n\n", reason
-                    )  # Normalize multiple newlines to double newline max
-                    reason = reason.strip()
-                    # Remove trailing colons
-                    reason = re.sub(r"[:]\s*$", "", reason).strip()
-
-                # Only add if we have at least a time
-                if time_str:
-                    best_times.append(
-                        {
-                            "time": time_str,
-                            "rating": rating,
-                            "wave_height_range": wave_height_range,
-                            "period": period,
-                            "wind_speed_range": wind_speed_range,
-                            "reason": reason if reason else None,
-                        }
-                    )
-
-            # Sort by rating (highest first)
-            best_times.sort(key=lambda x: x.get("rating", 0) or 0, reverse=True)
-
-            # Return only the single best time
-            return best_times[:1] if best_times else []
-
+            time_str = time_match.group(1).strip() if time_match else None
+            
+            # Rating: Handle "**Rating:** 45/100" or "Rating: **70/100**"
+            rating_match = re.search(r"\*\*Rating:\*\*\s*(\d+)/100|\*\*Rating:\*\*\s*(\d+)|Rating:\s*\*\*(\d+)/100\*\*", section, re.IGNORECASE)
+            rating = int(rating_match.group(1) or rating_match.group(2) or rating_match.group(3)) if rating_match else None
+            
+            # Wave height: Handle "**Wave Height:** 5.4-5.2 ft" or "Wave height: **4.0-4.1ft**"
+            wave_match = re.search(r"\*\*Wave [Hh]eight:\*\*\s*([0-9.]+[-–—][0-9.]+\s*ft)|Wave height:\s*\*\*([0-9.]+[-–—][0-9.]+ft)\*\*", section, re.IGNORECASE)
+            wave_height_range = (wave_match.group(1) or wave_match.group(2)).strip() if wave_match else None
+            
+            # Period: Handle "**Wave Period:** 10s" or "Wave period: **11s**"
+            period_match = re.search(r"\*\*Wave [Pp]eriod:\*\*\s*(\d+)s|Wave period:\s*\*\*(\d+)s\*\*", section, re.IGNORECASE)
+            period = int(period_match.group(1) or period_match.group(2)) if period_match else None
+            
+            # Wind speed: Handle "**Wind Speed:** 8.4-7.9 mph" or "Wind speed: **3.9-4.1 mph**"
+            wind_match = re.search(r"\*\*Wind [Ss]peed:\*\*\s*([0-9.]+[-–—][0-9.]+\s*mph)|Wind speed:\s*\*\*([0-9.]+[-–—][0-9.]+ mph)\*\*", section, re.IGNORECASE)
+            wind_speed_range = (wind_match.group(1) or wind_match.group(2)).strip() if wind_match else None
+            
+            # Explanation: "Explanation: [text until next section]"
+            explanation_match = re.search(
+                r"Explanation:\s*(.+?)(?=\n\s*\*\s*\*\*|$)",
+                section,
+                re.DOTALL | re.IGNORECASE,
+            )
+            reason = explanation_match.group(1).strip() if explanation_match else None
+            
+            # Clean up explanation text
+            if reason:
+                reason = re.sub(r"\*\*", "", reason)  # Remove bold markers
+                reason = re.sub(r"\*", "", reason)  # Remove italic markers
+                reason = re.sub(r"[ \t]+", " ", reason)  # Normalize spaces
+                reason = re.sub(r"\n[ \t]*\n+", "\n\n", reason)  # Normalize newlines
+                reason = reason.strip()
+            
+            # Only return if we have at least a time
+            if time_str:
+                return [{
+                    "time": time_str,
+                    "rating": rating,
+                    "wave_height_range": wave_height_range,
+                    "period": period,
+                    "wind_speed_range": wind_speed_range,
+                    "reason": reason,
+                }]
+            
+            return []
+            
         except Exception as e:
             print(f"Error parsing best times from AI analysis: {e}")
             import traceback
-
             traceback.print_exc()
             return []
